@@ -13,7 +13,17 @@ import { Canvas } from '@react-three/fiber';
 import { Environment, ContactShadows } from '@react-three/drei';
 import { BottleModel } from './BottleModel';
 
-export function BottleCanvas() {
+// Hoisted outside the component — prevents new object instances on every render,
+// which would cause R3F's internal store to invalidate on every parent re-render.
+const CAMERA = { position: [0, 0, 6.5] as [number, number, number], fov: 34 };
+const GL     = { antialias: true, alpha: true };
+const DPR: [number, number] = [1, 2];
+
+interface BottleCanvasProps {
+  activeLabelIndex: number;
+}
+
+export function BottleCanvas({ activeLabelIndex }: BottleCanvasProps) {
   const dragVelocity = useRef({ x: 0, y: 0 });
   const isDragging   = useRef(false);
   const lastMouse    = useRef({ x: 0, y: 0 });
@@ -52,9 +62,9 @@ export function BottleCanvas() {
       onPointerLeave={onPointerUp}
     >
       <Canvas
-        camera={{ position: [0, 0, 6.5], fov: 34 }}
-        gl={{ antialias: true, alpha: true }}
-        dpr={[1, 2]}
+        camera={CAMERA}
+        gl={GL}
+        dpr={DPR}
       >
         {/* ── Lighting ── */}
         <ambientLight intensity={0.45} />
@@ -86,7 +96,7 @@ export function BottleCanvas() {
 
         {/* ── The Bottle ─────────────────────────────────────────────────── */}
         <Suspense fallback={null}>
-          <BottleModel dragVelocity={dragVelocity} isDragging={isDragging} />
+          <BottleModel dragVelocity={dragVelocity} isDragging={isDragging} activeLabelIndex={activeLabelIndex} />
         </Suspense>
 
         {/* ── Ground shadow ──────────────────────────────────────────────── */}
