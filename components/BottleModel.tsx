@@ -22,6 +22,7 @@ import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { liquidVertexShader, liquidFragmentShader } from '@/lib/liquidShader';
+import { SPIRITS } from '@/lib/spiritData';
 
 // ── Detection keywords (compared against lowercased mesh names) ───────────────
 const LIQUID_KEYWORDS = [
@@ -31,19 +32,19 @@ const LIQUID_KEYWORDS = [
 const LABEL_KEYWORDS = ['label'];
 const CORK_KEYWORDS  = ['cork', 'stopper', 'cap', 'bung'];
 
-// Per-liquid colour variants (keyed to substring in node name, lowercase)
+// Per-liquid colour variants — keywords matched against lowercased mesh names.
+// Each spirit's mesh name contains a recognisable substring, so we key on those.
+// Keys matched against lowercased mesh names — GLB has liquid_AMBER and liquid_CLEAR
 const LIQUID_VARIANTS: Record<string, { color: THREE.Color; opacity: number }> = {
-  amber: { color: new THREE.Color(0.82, 0.42, 0.08), opacity: 0.88 },
-  clear: { color: new THREE.Color(0.78, 0.92, 1.00), opacity: 0.38 },
-  honey: { color: new THREE.Color(0.90, 0.62, 0.10), opacity: 0.82 },
-  berry: { color: new THREE.Color(0.40, 0.08, 0.30), opacity: 0.85 },
+  amber: { color: new THREE.Color(0.75, 0.32, 0.04), opacity: 0.30 }, // whiskey amber
+  clear: { color: new THREE.Color(0.82, 0.92, 1.00), opacity: 0.12 }, // clear spirit
 };
 
-// Fallback when name doesn't match a variant
-const LIQUID_DEFAULT = { color: new THREE.Color(0.82, 0.42, 0.08), opacity: 0.88 };
+// Fallback
+const LIQUID_DEFAULT = { color: new THREE.Color(0.75, 0.32, 0.04), opacity: 0.30 };
 
-// Earth-like axial tilt (~22°) — bottle leans sideways on its tilted axis
-const TILT_Z = 0.38;
+// ~5° rightward tilt
+const TILT_Z = 0.087;
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -57,21 +58,37 @@ interface BottleModelProps {
 export function BottleModel({ dragVelocity, isDragging, activeLabelIndex }: BottleModelProps) {
   const { scene } = useGLTF('/models/bottle.glb');
 
-  const groupRef = useRef<THREE.Group>(null);
+  // Separate ref for the inner spinning group so the tilt is applied in world
+  // space and doesn't rotate with the bottle as it spins on Y.
+  const spinRef = useRef<THREE.Group>(null);
 
   // ── Compute group transform from scene bounding box ─────────────────────
   // useMemo runs synchronously during render — no ref timing issues.
   const groupTransform = useMemo(() => {
     scene.updateMatrixWorld(true);
     const box = new THREE.Box3();
+    const SKIP_NAMES = ['wall', 'plane', 'background', 'backdrop', 'floor', 'ground', 'label'];
+    // Only measure solid structural meshes (glass body + cork).
+    // Labels (flat quads) and liquid (inner surface) are excluded because they
+    // can have near-zero thickness or unusual local-space extents that corrupt
+    // the scale calculation.
     scene.traverse((child) => {
-      if (child instanceof THREE.Mesh) box.expandByObject(child);
+      if (!(child instanceof THREE.Mesh)) return;
+      const n = child.name.toLowerCase().trim();
+      if (SKIP_NAMES.some(p => n.includes(p))) return;
+      if (LIQUID_KEYWORDS.some(kw => n.includes(kw))) return;
+      if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
+      if (!child.geometry.boundingBox) return;
+      const geomBox = child.geometry.boundingBox.clone().applyMatrix4(child.matrixWorld);
+      box.union(geomBox);
     });
     if (box.isEmpty()) return { scale: 1, positionY: 0 };
     const size   = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
-    const s      = 1.1 / size.y;
-    return { scale: s, positionY: -center.y * s + 0.1 };
+    // Guard against degenerate geometry (un-applied Blender scale, etc.)
+    const rawScale = 2.15 / size.y;
+    const s        = Number.isFinite(rawScale) ? Math.min(rawScale, 5.0) : 1.65;
+    return { scale: s, positionY: -center.y * s + 0.35 };
   }, [scene]);
 
   const rotY        = useRef(0);
@@ -140,7 +157,7 @@ export function BottleModel({ dragVelocity, isDragging, activeLabelIndex }: Bott
             uOpacity:   { value: variant.opacity },
           },
           transparent: true,
-          side:        THREE.DoubleSide,
+          side:        THREE.FrontSide,
           depthWrite:  false,
         });
         origMats.set(child, child.material);
@@ -152,18 +169,28 @@ export function BottleModel({ dragVelocity, isDragging, activeLabelIndex }: Bott
         // ── Label: clone original so ALL textures are preserved, enable fade ──
         // Using .includes('label') catches "Label | Whiskey", "Label_Rum", "label.001" etc.
         // The depthWrite:false lets labels layer correctly over the glass in renderOrder 3.
-        const src = (Array.isArray(child.material)
-          ? child.material[0]
-          : child.material) as THREE.MeshStandardMaterial;
+        //
+        // Some label meshes exported from Blender carry a multi-material array where
+        // material[0] is a plain white fill and material[1] (or later) holds the actual
+        // texture.  Always picking [0] makes those labels appear solid white.
+        // Instead, pick whichever material in the array has a `map` (texture), falling
+        // back to [0] only when none of them do.
+        const allMats = (Array.isArray(child.material)
+          ? child.material
+          : [child.material]) as THREE.MeshStandardMaterial[];
+        const src = allMats.find(m => m.map != null) ?? allMats[0];
         const clone = src.clone() as THREE.MeshStandardMaterial;
+        // Ensure the texture is treated as sRGB colour data (not linear).
+        // Three.js r152+ requires this when textures are manually cloned.
+        if (clone.map) clone.map.colorSpace = THREE.SRGBColorSpace;
         clone.transparent = true;
         clone.depthWrite  = false;
-        clone.side        = THREE.DoubleSide; // Blender normals can be inward-facing
+        clone.side        = THREE.FrontSide;  // back face causes label to render over liquid from all angles
         clone.opacity     = 0;               // start invisible; useEffect sets active one
         clone.needsUpdate = true;
         origMats.set(child, child.material);
         child.material    = clone;
-        child.renderOrder = 3;
+        child.renderOrder = 2;
         child.visible     = true;            // managed via opacity, not .visible
         labelMeshArr.push(child);
         labelMatArr .push(clone);
@@ -176,33 +203,43 @@ export function BottleModel({ dragVelocity, isDragging, activeLabelIndex }: Bott
           ? child.material[0]
           : child.material) as THREE.MeshStandardMaterial;
         const clone = src.clone() as THREE.MeshStandardMaterial;
-        clone.side        = THREE.DoubleSide;
-        clone.transparent = false; // opaque — must write to depth buffer
-        clone.depthWrite  = true;
+        clone.side            = THREE.DoubleSide;
+        clone.transparent     = false;
+        clone.depthWrite      = true;
+        clone.roughness       = 0.90; // cork is matte and rough
+        clone.metalness       = 0.0;
+        clone.envMapIntensity = 0.25;
+        // Apply a realistic cork colour when no texture is packed in the GLB
+        if (!clone.map) clone.color.setRGB(0.70, 0.48, 0.31);
         clone.needsUpdate = true;
         origMats.set(child, child.material);
         child.material    = clone;
-        child.renderOrder = 0; // opaque pass
+        child.renderOrder = 0;
 
       } else if (child.name.length > 0) {
         // ── Bottle glass body — IBL reflections + subtle transparency ─────────
         // envMapIntensity: 1.8 gives readable glass reflections from the
         // warehouse Environment preset while staying mostly see-through.
         const glassMat = new THREE.MeshPhysicalMaterial({
-          color:           new THREE.Color(0.92, 0.97, 1.0),
-          roughness:       0.05,
-          metalness:       0.0,
-          transparent:     true,
-          opacity:         0.15,
-          side:            THREE.FrontSide,
-          envMapIntensity: 1.8,
-          depthWrite:      false,
-          reflectivity:    0.9,
-          ior:             1.5,
+          color:               new THREE.Color(0.82, 0.94, 0.97),
+          roughness:           0.03,
+          metalness:           0.0,
+          // Physically-based glass transmission — far more convincing than
+          // low-opacity transparency; uses screen-space refraction pass.
+          transmission:        0.92,
+          thickness:           0.8,
+          ior:                 1.52,
+          attenuationColor:    new THREE.Color(0.82, 0.94, 0.97),
+          attenuationDistance: 8.0,
+          envMapIntensity:     2.8,
+          transparent:         true,
+          opacity:             1.0,
+          side:                THREE.FrontSide,
+          depthWrite:          false,
         });
         origMats.set(child, child.material);
         child.material    = glassMat;
-        child.renderOrder = 2;
+        child.renderOrder = 3;
         glassMatsArr.push(glassMat);
       }
     });
@@ -243,7 +280,10 @@ export function BottleModel({ dragVelocity, isDragging, activeLabelIndex }: Bott
   useEffect(() => {
     const targets = labelTarget.current;
     if (!targets.length) return;
-    const clampedIdx = Math.min(activeLabelIndex, targets.length - 1);
+    // Use the explicit meshIndex from spiritData so removed/skipped label
+    // meshes in the GLB don't shift all subsequent spirits out of sync.
+    const meshIdx = SPIRITS[activeLabelIndex]?.meshIndex ?? activeLabelIndex;
+    const clampedIdx = Math.min(meshIdx, targets.length - 1);
     for (let i = 0; i < targets.length; i++) {
       targets[i] = i === clampedIdx ? 1.0 : 0.0;
     }
@@ -251,7 +291,7 @@ export function BottleModel({ dragVelocity, isDragging, activeLabelIndex }: Bott
 
   // ── Per-frame: rotation physics + shader uniform updates ──────────────────
   useFrame((_state, delta) => {
-    if (!groupRef.current) return;
+    if (!spinRef.current) return;
     const dt = Math.min(delta, 0.05); // guard against tab-blur spike
     elapsedTime.current += dt;
 
@@ -259,13 +299,13 @@ export function BottleModel({ dragVelocity, isDragging, activeLabelIndex }: Bott
     rotX.current += dragVelocity.current.y * 60 * dt;
 
     // Auto-spin on Y — rotation.z tilt is permanent and untouched
-    if (!isDragging.current) rotY.current += 0.004;
+    if (!isDragging.current) rotY.current += 0.005;
 
     dragVelocity.current.x *= 0.91;
     dragVelocity.current.y *= 0.91;
 
-    groupRef.current.rotation.y = rotY.current;
-    groupRef.current.rotation.x = THREE.MathUtils.clamp(rotX.current, -0.3, 0.3);
+    spinRef.current.rotation.y = rotY.current;
+    spinRef.current.rotation.x = THREE.MathUtils.clamp(rotX.current, -0.3, 0.3);
 
     const t = elapsedTime.current;
 
@@ -317,13 +357,16 @@ export function BottleModel({ dragVelocity, isDragging, activeLabelIndex }: Bott
   });
 
   return (
+    // Outer group: world-space tilt only — never mutated by useFrame
     <group
-      ref={groupRef}
+      rotation-z={-TILT_Z}
       scale={groupTransform.scale}
       position-y={groupTransform.positionY}
-      rotation-z={TILT_Z}
     >
-      <primitive object={scene} />
+      {/* Inner group: spin + drag rotation only — no tilt component */}
+      <group ref={spinRef}>
+        <primitive object={scene} />
+      </group>
     </group>
   );
 }

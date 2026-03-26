@@ -13,6 +13,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { BottleCanvas } from './BottleCanvas';
+import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 import { SPIRITS } from '@/lib/spiritData';
 
 const CYCLE_MS = 5000; // ms per spirit
@@ -144,7 +145,9 @@ export function HeroSection() {
             style={{ background: 'radial-gradient(circle, #f59e0b, transparent)' }}
           />
           {mounted ? (
-            <BottleCanvas activeLabelIndex={spiritIdx} />
+            <CanvasErrorBoundary>
+              <BottleCanvas activeLabelIndex={spiritIdx} />
+            </CanvasErrorBoundary>
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <div className="w-10 h-10 rounded-full border-2 border-amber-500/40 border-t-amber-500 animate-spin" />

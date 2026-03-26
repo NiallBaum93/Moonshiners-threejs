@@ -22,111 +22,118 @@
 
 export const liquidVertexShader = /* glsl */ `
   uniform float uTime;
-  uniform float uGravTiltX;  // tan(bottle_tilt) * cos(rotY) — X gravity component
-  uniform float uGravTiltZ;  // tan(bottle_tilt) * sin(rotY) — Z gravity component
-  uniform float uSlosh;      // slosh energy [0..1]
-  uniform float uSpin;       // rotation speed [0..1]
+  uniform float uGravTiltX;
+  uniform float uGravTiltZ;
+  uniform float uSlosh;
+  uniform float uSpin;
 
   varying vec3  vNormal;
   varying vec3  vWorldPos;
-  varying float vSurface;    // passed to fragment for caustic gating
+  varying vec3  vViewPos;
+  varying float vSurface;
 
   void main() {
     vec3 pos = position;
 
-    // ── Surface factor ────────────────────────────────────────────────────
-    // Upward-facing normals  = liquid-air interface → full displacement.
-    // Side / bottom normals  = container walls      → zero displacement.
-    float sf = max(0.0, normal.y);
+    // Smooth surface factor — upward normals = liquid-air interface
+    float sf = smoothstep(-0.05, 0.35, normal.y);
     vSurface = sf;
 
-    // ── 1. Gravity tilt ──────────────────────────────────────────────────
-    // The liquid surface must remain perpendicular to world-space gravity.
-    // When the bottle tilts/spins the surface counter-tilts in model space.
-    // uGravTiltX/Z are the horizontal gravity components in the bottle frame.
+    // 1. Gravity tilt — keeps the liquid surface level as the bottle spins
     float gravTilt = -(pos.x * uGravTiltX + pos.z * uGravTiltZ);
     pos.y += gravTilt * sf;
 
-    // ── 2. Slosh waves (4 travelling waves for an organic, chaotic look) ──
-    // Amplitude scales with slosh energy — bursts on jerk, decays smoothly.
-    float A = uSlosh * 0.062;
-    float w = 0.0;
-    w += sin(pos.x *  5.8 + uTime * 3.10) * A;
-    w += sin(pos.z *  6.4 + uTime * 2.75) * A * 0.90;
-    w += sin((pos.x + pos.z) * 4.2 + uTime * 2.40) * A * 0.75;
-    w += sin((pos.x - pos.z) * 5.1 - uTime * 2.90) * A * 0.65;
-    pos.y += w * sf;
+    // 2. Slosh waves — incommensurate frequencies prevent regular grid artefacts
+    float A = uSlosh * 0.048;
+    pos.y += sin(pos.x *  4.3 + uTime * 2.6)          * A        * sf;
+    pos.y += sin(pos.z *  5.7 + uTime * 2.1)          * A * 0.82 * sf;
+    pos.y += sin((pos.x + pos.z) * 3.5 + uTime * 1.9) * A * 0.68 * sf;
+    pos.y += sin((pos.x - pos.z) * 4.8 - uTime * 2.4) * A * 0.55 * sf;
+    pos.y += sin(pos.x * 13.7 + uTime * 4.2) * uSlosh * 0.007 * sf;
+    pos.y += sin(pos.z * 11.1 + uTime * 3.6) * uSlosh * 0.007 * sf;
 
-    // ── 3. Centrifugal paraboloid + ring ripples (from spin) ─────────────
-    // Fast spin depresses the centre and raises the edges (paraboloid).
-    // Secondary ring ripples radiate outward.
-    float r2       = dot(pos.xz, pos.xz);
-    float r        = sqrt(r2);
-    float parabola = uSpin * uSpin * r2 * 0.12;
-    float rings    = sin(r * 13.0 - uTime * 6.5) * uSpin * 0.024;
+    // 3. Centrifugal paraboloid + ring ripples from spin
+    float r  = length(pos.xz);
+    float r2 = r * r;
+    float parabola = uSpin * uSpin * r2 * 0.09;
+    float rings    = sin(r * 10.5 - uTime * 5.8) * uSpin * 0.018;
     pos.y += (parabola + rings) * sf;
 
-    // ── 4. Idle capillary ripples (always on, very subtle) ───────────────
-    float capillary = sin(pos.x * 21.0 + uTime * 1.7) * 0.0028
-                    + sin(pos.z * 17.0 + uTime * 2.1) * 0.0028;
-    pos.y += capillary * sf;
+    // 4. Idle capillary ripples
+    pos.y += (sin(pos.x * 19.0 + uTime * 1.6) * 0.003
+            + sin(pos.z * 15.5 + uTime * 2.0) * 0.003) * sf;
 
     vNormal   = normalize(normalMatrix * normal);
     vWorldPos = (modelMatrix * vec4(pos, 1.0)).xyz;
+    vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
+    vViewPos   = mvPos.xyz;
 
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+    gl_Position = projectionMatrix * mvPos;
   }
 `;
 
 export const liquidFragmentShader = /* glsl */ `
   uniform float uTime;
-  uniform vec3  uColor;    // base liquid colour
-  uniform float uOpacity;  // base transparency
+  uniform vec3  uColor;
+  uniform float uOpacity;
 
   varying vec3  vNormal;
   varying vec3  vWorldPos;
+  varying vec3  vViewPos;
   varying float vSurface;
+
+  // GGX microfacet NDF — tight, realistic highlight
+  float D_GGX(float NdotH, float roughness) {
+    float a  = roughness * roughness;
+    float a2 = a * a;
+    float d  = NdotH * NdotH * (a2 - 1.0) + 1.0;
+    return a2 / (3.14159265 * d * d + 1e-6);
+  }
 
   void main() {
     vec3 N = normalize(vNormal);
+    if (!gl_FrontFacing) N = -N;
+
     vec3 V = normalize(cameraPosition - vWorldPos);
+    vec3 L = normalize(vec3(3.0, 5.0, 3.0));
+    vec3 H = normalize(L + V);
 
-    // ── Diffuse + key light ──────────────────────────────────────────────
-    vec3  L    = normalize(vec3(2.0, 4.0, 2.5));
-    float diff = 0.20 + 0.80 * max(dot(N, L), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotV = max(dot(N, V), 0.001);
 
-    // ── Blinn-Phong specular ─────────────────────────────────────────────
-    vec3  H    = normalize(L + V);
-    float spec = pow(max(dot(N, H), 0.0), 110.0) * 0.85;
+    // Beer-Lambert depth coloration.
+    // vSurface=1 at the liquid-air interface, 0 at sides/bottom.
+    // Sides = viewer looks through more liquid = richer, darker colour.
+    // Whiskey absorbs blue strongly, green moderately, red least.
+    float depth    = 1.0 - vSurface * 0.65;
+    vec3  absorb   = exp(-vec3(0.10, 0.50, 3.80) * depth * 2.8);
+    vec3  volColor = uColor * clamp(absorb * 0.85 + 0.12, 0.0, 1.0);
 
-    // ── Fresnel edge glow ────────────────────────────────────────────────
-    float NdotV   = max(dot(N, V), 0.0);
-    float fresnel = pow(1.0 - NdotV, 3.2);
+    // Lambertian diffuse — restrained, liquid interior is self-illuminated
+    float diff = 0.18 + 0.52 * NdotL;
 
-    // ── Subsurface scattering approximation ──────────────────────────────
-    // Simulates light entering through the opposite face of the liquid volume.
-    float sss = pow(max(dot(-V, N), 0.0), 2.5) * 0.45;
+    // GGX specular on the liquid surface (roughness 0.03 = very polished)
+    float spec = D_GGX(NdotH, 0.03) * NdotL * 0.22;
 
-    // ── Caustic shimmer (liquid surface only, gated by vSurface) ─────────
-    // Two interfering sine waves create a natural shimmer pattern.
-    vec2  cUV     = vWorldPos.xz * 18.0 + uTime * vec2(1.4, 1.1);
-    float c1      = sin(cUV.x) * sin(cUV.y);
-    float c2      = sin(cUV.x * 1.3 + 0.7) * sin(cUV.y * 0.85 + uTime * 0.65);
-    float caustic = max(0.0, c1 * c2) * vSurface * 0.20;
+    // Schlick Fresnel — F0 = 0.04 for water / spirits
+    float fresnel = 0.04 + 0.96 * pow(1.0 - NdotV, 5.0);
 
-    // ── Compose colour ───────────────────────────────────────────────────
-    vec3 col = uColor * diff;
-    col += vec3(spec);                                          // specular highlight
-    col += uColor * fresnel * 0.50;                            // warm Fresnel glow
-    col += uColor * sss * 0.35;                                // subsurface warmth
-    col += vec3(caustic * 1.6, caustic * 0.95, caustic * 0.1); // caustic shimmer
+    // Warm backlit glow — lamp light punching through from behind the bottle
+    float backlit = pow(max(dot(-V, L), 0.0), 1.8) * 0.18;
 
-    // \u2500\u2500 Alpha \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-    // Opaque at edges (Fresnel) and surface, translucent in the interior.
-    float alpha = uOpacity
-                + fresnel   * 0.20
-                + vSurface  * 0.07;
+    // Meniscus shimmer — tight ring of brightness at the liquid-air boundary
+    float meniscus = smoothstep(0.62, 0.80, vSurface)
+                   * smoothstep(1.00, 0.82, vSurface)
+                   * (0.5 + 0.5 * sin(uTime * 1.2)) * 0.12;
 
+    vec3 col  = volColor * diff;
+    col      += vec3(0.98, 0.93, 0.80) * spec;    // warm sharp highlight
+    col      += volColor * fresnel * 0.22;         // subtle Fresnel edge
+    col      += volColor * backlit;                // warm transmitted glow
+    col      += vec3(1.0, 0.88, 0.60) * meniscus; // meniscus ring shimmer
+
+    float alpha = uOpacity + fresnel * 0.04;
     gl_FragColor = vec4(col, clamp(alpha, 0.0, 1.0));
   }
 `;

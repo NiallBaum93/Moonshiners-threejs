@@ -17,39 +17,53 @@ export interface Spirit {
   proof: string;
   /** Comma-separated tasting notes */
   notes: string;
+  /** Index of this spirit's label mesh in the GLB scene.traverse order */
+  meshIndex: number;
 }
 
+// Label mesh traversal order from the GLB (scene.traverse visit order):
+// 0 → Label_|_VAMP
+// 1 → Label_|_UNREST  (omitted — texture not packed in GLB)
+// 2 → Label_|_Vagant
+// 3 → Label_|_Paradox
+// 4 → Label_|_NoctiVagant
+//
+// meshIndex maps each Spirit to its exact position in that traversal order.
 export const SPIRITS: Spirit[] = [
   {
-    name: 'Original Moonshine',
-    subtitle: 'Pure & Unadulterated',
+    name: 'VAMP',
+    subtitle: 'Seductive. Dangerous. Crimson.',
     description:
-      'Distilled from our 150-year-old grain mash recipe and bottled straight off the copper still. Crystal-clear, bold, and unapologetically honest.',
-    proof: '100 Proof',
-    notes: 'Grain-forward · Crisp · Clean',
-  },
-  {
-    name: 'Smoked Whiskey',
-    subtitle: 'Bold. Smoky. Unforgettable.',
-    description:
-      'Aged in charred American oak then finished over slow-burning applewood smoke. Deep caramel depth with a long, warming finish that lingers.',
-    proof: '86 Proof',
-    notes: 'Smoky · Caramel · Oak',
-  },
-  {
-    name: 'Wildflower Honey',
-    subtitle: 'Naturally Sweet, Wildly Good',
-    description:
-      'Blended with raw wildflower honey from our local apiary. Silky-smooth with floral sweetness and a gentle warmth that makes it perfect neat or on the rocks.',
-    proof: '70 Proof',
-    notes: 'Floral · Honey · Warm',
-  },
-  {
-    name: 'Blackberry Shine',
-    subtitle: 'Fruit of the Appalachian Hills',
-    description:
-      "Wild-picked Appalachian blackberries steep in our white moonshine for 60 days. Luscious dark fruit with just enough bite to know it's the real thing.",
+      'Deep garnet and dangerously smooth. VAMP is a dark-fruit spirit aged with blood orange peel and black cherry — alluring at first pour, with a heat that stays long after.',
     proof: '80 Proof',
-    notes: 'Blackberry · Tart · Smooth',
+    notes: 'Blood Orange · Black Cherry · Dark Spice',
+    meshIndex: 0,
+  },
+  {
+    name: 'Vagant',
+    subtitle: 'No Fixed Horizon',
+    description:
+      'A wanderer by nature. Vagant draws from distillation traditions across borders — a free-roaming blend with an ever-shifting finish that takes you somewhere new every time.',
+    proof: '84 Proof',
+    notes: 'Alpine Herb · Stone Fruit · Open Road',
+    meshIndex: 2,
+  },
+  {
+    name: 'Paradox',
+    subtitle: 'Contradictions, Perfected',
+    description:
+      'Smooth yet fierce. Delicate yet unyielding. Paradox blends opposing forces into something that defies expectation — a spirit that reveals a new character with every sip.',
+    proof: '88 Proof',
+    notes: 'Bright Citrus · Deep Leather · Velvet Finish',
+    meshIndex: 3,
+  },
+  {
+    name: 'NoctiVagant',
+    subtitle: 'Wander Through the Dark',
+    description:
+      'Crafted for those who belong to the night. A complex, slow-aged spirit with layers that only reveal themselves as the hours dissolve — mysterious, lingering, and impossible to forget.',
+    proof: '92 Proof',
+    notes: 'Dark Spice · Smoked Vanilla · Midnight Oak',
+    meshIndex: 4,
   },
 ];
