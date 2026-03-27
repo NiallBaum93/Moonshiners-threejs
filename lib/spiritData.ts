@@ -19,6 +19,8 @@ export interface Spirit {
   notes: string;
   /** Index of this spirit's label mesh in the GLB scene.traverse order */
   meshIndex: number;
+  /** Hex accent colour used for per-spirit theming across the page */
+  color: string;
 }
 
 // Label mesh traversal order from the GLB (scene.traverse visit order):
@@ -38,6 +40,7 @@ export const SPIRITS: Spirit[] = [
     proof: '80 Proof',
     notes: 'Blood Orange · Black Cherry · Dark Spice',
     meshIndex: 0,
+    color: '#8B1E3F',
   },
   {
     name: 'Vagant',
@@ -47,6 +50,7 @@ export const SPIRITS: Spirit[] = [
     proof: '84 Proof',
     notes: 'Alpine Herb · Stone Fruit · Open Road',
     meshIndex: 2,
+    color: '#7A6019',
   },
   {
     name: 'Paradox',
@@ -56,6 +60,7 @@ export const SPIRITS: Spirit[] = [
     proof: '88 Proof',
     notes: 'Bright Citrus · Deep Leather · Velvet Finish',
     meshIndex: 3,
+    color: '#2D4E7A',
   },
   {
     name: 'NoctiVagant',
@@ -65,5 +70,6 @@ export const SPIRITS: Spirit[] = [
     proof: '92 Proof',
     notes: 'Dark Spice · Smoked Vanilla · Midnight Oak',
     meshIndex: 4,
+    color: '#1A1F3A',
   },
 ];

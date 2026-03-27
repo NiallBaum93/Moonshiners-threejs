@@ -1,8 +1,19 @@
 @import "tailwindcss";
 
+/* Tailwind v4: class-based dark mode */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #f8fafc;
   --foreground: #09090b;
+  --accent: #f59e0b;
+  --dot-inactive: #d1d5db;
+}
+
+.dark {
+  --background: #09090b;
+  --foreground: #f8fafc;
+  --dot-inactive: #52525b;
 }
 
 @theme inline {
@@ -14,6 +25,13 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* Hide native cursor on desktop so the custom GSAP cursor takes over */
+@media (pointer: fine) {
+  *, *::before, *::after {
+    cursor: none !important;
+  }
 }
 
 html,
