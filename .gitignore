@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Print-ready label artwork (large source files; web versions live in public/labels)
+/design-source/

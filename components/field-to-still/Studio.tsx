@@ -1,0 +1,166 @@
+'use client';
+
+import { useRef, type RefObject } from 'react';
+import { useFrame } from '@react-three/fiber';
+import { Environment, Lightformer } from '@react-three/drei';
+import * as THREE from 'three';
+import type { SceneState } from './story';
+
+// The studio's colours through the farm's year: a cool cream for the
+// strawberry summer, warming to oat and amber for the pumpkin patch.
+const SUMMER = { floor: '#e3d9cc', wall: '#efe8df', glow: '#fbf8f3', key: '#fff3e2' };
+const AUTUMN = { floor: '#d9c3a8', wall: '#eadac6', glow: '#fbf1e4', key: '#ffdcb0' };
+
+// A seamless photo-studio "cove": a giant sphere around the scene, seen from
+// the inside, shaded with a soft vertical gradient and a glow behind the bottle.
+const domeVertex = /* glsl */ `
+  varying vec3 vDir;
+  void main() {
+    vDir = normalize(position);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const domeFragment = /* glsl */ `
+  uniform vec3 uFloor;
+  uniform vec3 uWall;
+  uniform vec3 uGlow;
+  varying vec3 vDir;
+
+  void main() {
+    vec3 dir = normalize(vDir);
+    // Floor colour below the horizon, wall colour above, with a soft seam.
+    vec3 col = mix(uFloor, uWall, smoothstep(-0.08, 0.25, dir.y));
+    // Hotspot behind the bottle, like a light aimed at the backdrop.
+    float glow = pow(max(dot(dir, normalize(vec3(0.0, 0.12, -1.0))), 0.0), 8.0);
+    col = mix(col, uGlow, glow * 0.6);
+    gl_FragColor = vec4(col, 1.0);
+    #include <colorspace_fragment>
+  }
+`;
+
+const palette = (p: typeof SUMMER) => ({
+  floor: new THREE.Color(p.floor),
+  wall: new THREE.Color(p.wall),
+  glow: new THREE.Color(p.glow),
+  key: new THREE.Color(p.key),
+});
+const summer = palette(SUMMER);
+const autumn = palette(AUTUMN);
+
+// The two tall light strips that make the glass's main highlights, placed by
+// angle around the bottle (radians, 0 = to its right) and distance. As you
+// scroll they drift around it, so the highlights glide across the glass, like
+// a photographer moving a softbox.
+const KEY_STRIP = { angle: 2.36, distance: 4.24, height: 1.5 };
+const RIM_STRIP = { angle: 0.4, distance: 3.81, height: 1 };
+const SWEEP = 0.3; // radians either way
+const SWEEP_PER_SCREEN = 0.9; // radians of the sweep's cycle per screen scrolled
+
+// The backdrop's colours. There's only ever one studio, so they can live here
+// and change every frame without involving React.
+const domeUniforms = {
+  uFloor: { value: summer.floor.clone() },
+  uWall: { value: summer.wall.clone() },
+  uGlow: { value: summer.glow.clone() },
+};
+
+/** The backdrop's colour right now (it shifts with the seasons). Read it, don't change it. */
+export const backdropWall = domeUniforms.uWall.value;
+
+export function Studio({ sceneRef }: { sceneRef?: RefObject<SceneState> }) {
+  const keyRef = useRef<THREE.DirectionalLight>(null);
+  const keyStripRef = useRef<THREE.Mesh>(null);
+  const rimStripRef = useRef<THREE.Mesh>(null);
+
+  useFrame(() => {
+    // The strips sweep as you scroll, in opposite directions.
+    const sweep = Math.sin((sceneRef?.current.scroll ?? 0) * SWEEP_PER_SCREEN) * SWEEP;
+    place(keyStripRef.current, KEY_STRIP, sweep);
+    place(rimStripRef.current, RIM_STRIP, -sweep);
+
+    // Blend between the seasons as the scroll goes from summer to autumn.
+    const t = sceneRef?.current.autumn ?? 0;
+    domeUniforms.uFloor.value.lerpColors(summer.floor, autumn.floor, t);
+    domeUniforms.uWall.value.lerpColors(summer.wall, autumn.wall, t);
+    domeUniforms.uGlow.value.lerpColors(summer.glow, autumn.glow, t);
+    keyRef.current?.color.lerpColors(summer.key, autumn.key, t);
+  });
+
+  return (
+    <>
+      <mesh scale={6}>
+        <sphereGeometry args={[1, 64, 32]} />
+        <shaderMaterial
+          vertexShader={domeVertex}
+          fragmentShader={domeFragment}
+          uniforms={domeUniforms}
+          side={THREE.BackSide}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/*
+        Reflections. These panels never appear on screen; they're rendered into
+        a cube map that every shiny material reflects. Long thin strips on a
+        dark surround are what give glass bottles their crisp highlights and
+        defined edges. They sit 3+ units out because the cube camera can't see
+        anything closer than 1. The map is re-rendered every frame (frames=
+        Infinity) so the strips can move; 256 pixels a side keeps that cheap.
+      */}
+      <Environment resolution={256} frames={Infinity}>
+        <Lightformer ref={keyStripRef} form="rect" intensity={5} scale={[1.2, 6, 1]} />
+        <Lightformer ref={rimStripRef} form="rect" intensity={3} scale={[0.6, 6, 1]} />
+        <Lightformer form="rect" intensity={2} position={[0, 1, -4]} scale={[6, 0.8, 1]} target={[0, 0, 0]} />
+        <Lightformer form="circle" intensity={1.5} position={[0, 5, 0]} scale={4} target={[0, 0, 0]} />
+        {/* The backdrop, low on the horizon behind the bottle. A liquid surface
+            seen from just above mirrors exactly this; without it, it mirrors
+            empty black and goes dark. */}
+        <Lightformer form="rect" intensity={0.9} position={[0, 0.25, -4]} scale={[12, 1.4, 1]} target={[0, 0.25, 0]} />
+      </Environment>
+
+      {/* Direct lights do the diffuse lighting (label paper, cork, fruit). Glass
+          barely reflects them, so they don't turn it milky like a big
+          reflected fill panel would. */}
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[0.6, 0.8, 1.2]} intensity={0.8} />
+
+      {/* Key light: warm, upper left, and the one that casts the shadow. */}
+      <directionalLight
+        ref={keyRef}
+        position={[-0.5, 1.2, 0.6]}
+        intensity={2}
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-radius={6}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.002}
+        shadow-camera-left={-0.3}
+        shadow-camera-right={0.3}
+        shadow-camera-top={0.3}
+        shadow-camera-bottom={-0.3}
+        shadow-camera-near={0.5}
+        shadow-camera-far={3}
+      />
+
+      {/* A "shadow catcher": an invisible floor that only draws the shadows that land on it.
+          It sits 1mm below the bottle's base. At exactly the same height, the
+          two surfaces fight over which is in front ("z-fighting"), and the
+          base flickers as the bottle turns. It doesn't hide what's beneath it
+          (depthWrite off): there's no visible floor, so falling fruit should
+          carry on out of the frame rather than vanish at an invisible line. */}
+      <mesh rotation-x={-Math.PI / 2} position-y={-0.001} receiveShadow>
+        <planeGeometry args={[3, 3]} />
+        <shadowMaterial transparent opacity={0.22} color="#3a2a1c" depthWrite={false} />
+      </mesh>
+    </>
+  );
+}
+
+/** Put a light strip at its angle (plus the sweep) around the bottle, facing it. */
+function place(strip: THREE.Mesh | null, at: typeof KEY_STRIP, sweep: number) {
+  if (!strip) return;
+  const angle = at.angle + sweep;
+  strip.position.set(Math.cos(angle) * at.distance, at.height, Math.sin(angle) * at.distance);
+  strip.lookAt(0, at.height * 0.3, 0);
+}

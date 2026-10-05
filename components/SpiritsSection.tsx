@@ -3,12 +3,12 @@
 /**
  * SpiritsSection
  *
- * Desktop (md+): horizontal pinned scroll via GSAP ScrollTrigger â€” one full-
+ * Desktop (md+): horizontal pinned scroll via GSAP ScrollTrigger — one full-
  * viewport card per spirit.  The track moves on the X axis while the section
  * stays pinned.
  *
  * Mobile (<md): cards stack vertically with a standard scroll-triggered
- * stagger â€” no horizontal shenanigans, works perfectly on touch.
+ * stagger — no horizontal shenanigans, works perfectly on touch.
  */
 
 import { useRef, useLayoutEffect } from 'react';
@@ -47,7 +47,7 @@ export function SpiritsSection() {
       const cards = track.querySelectorAll<HTMLDivElement>('.spirit-card');
 
       if (isDesktop) {
-        /* â”€â”€ Desktop: horizontal pinned scroll â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+        /* ── Desktop: horizontal pinned scroll ──────────────────────── */
         track.style.width = `${SPIRITS.length * 100}vw`;
 
         const getTravel = () => track.scrollWidth - window.innerWidth;
@@ -77,7 +77,7 @@ export function SpiritsSection() {
           });
         });
       } else {
-        /* â”€â”€ Mobile: vertical stagger â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+        /* ── Mobile: vertical stagger ───────────────────────────────── */
         cards.forEach((card) => {
           gsap.from(card.querySelectorAll('.card-animate'), {
             y: 40, opacity: 0, stagger: 0.08, duration: 0.6, ease: 'power3.out',
@@ -101,14 +101,14 @@ export function SpiritsSection() {
       id="spirits"
       className="bg-zinc-950 md:overflow-hidden"
     >
-      {/* "Scroll to explore" hint â€” only visible on desktop pinned scroll */}
+      {/* "Scroll to explore" hint — only visible on desktop pinned scroll */}
       <div className="absolute top-10 left-1/2 -translate-x-1/2 z-10 pointer-events-none select-none hidden md:block">
         <p className="text-zinc-600 text-xs font-semibold uppercase tracking-[0.22em]">
           Scroll to explore
         </p>
       </div>
 
-      {/* Track â€” horizontal on desktop, vertical on mobile */}
+      {/* Track — horizontal on desktop, vertical on mobile */}
       <div
         ref={trackRef}
         className="flex flex-col md:flex-row will-change-transform"
