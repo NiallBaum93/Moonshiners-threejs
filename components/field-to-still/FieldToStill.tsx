@@ -2,17 +2,21 @@
 
 import { Fragment, useEffect, useRef, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
-import { Fraunces } from 'next/font/google'
+import Image from 'next/image'
+import { DM_Serif_Display, Inter } from 'next/font/google'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { COLLAB_SPIRITS, type CollabSpirit } from '@/lib/collabData'
+import { Logo } from '@/components/Logo'
 import { BEATS, TOTAL_SCREENS, story, type BeatId } from './story'
 
 gsap.registerPlugin(ScrollTrigger)
 
-// A warm, slightly old-fashioned serif for the headlines, to sit alongside
-// the label typography. The variable is scoped to this page.
-const display = Fraunces({ subsets: ['latin'], variable: '--font-display' })
+// Moonshiners' own type, as on moonshiners.co.uk: DM Serif Display for the
+// headlines, Inter for everything else. (The 3D words use the same display
+// face; see BackdropWord.) The variables are scoped to this page.
+const display = DM_Serif_Display({ subsets: ['latin'], weight: '400', variable: '--font-display' })
+const body = Inter({ subsets: ['latin'], variable: '--font-body' })
 
 // Three.js needs `window` and a WebGL context, so the 3D scene must never
 // render on the server. `ssr: false` is only allowed inside a Client Component,
@@ -117,7 +121,7 @@ export function FieldToStill() {
   // sides, which would let the page scroll sideways. (Clip, not hidden, which
   // would stop the copy sticking.)
   return (
-    <main ref={pageRef} className={`${display.variable} relative overflow-x-clip bg-[#f7e1dd] text-[#2b1d14]`}>
+    <main ref={pageRef} className={`${display.variable} ${body.variable} relative overflow-x-clip font-[family-name:var(--font-body)] bg-[#f7e1dd] text-[#2b1d14]`}>
       {/* The studio. The copy above it ignores the pointer, so you can still pick up the bottle. */}
       <div className='fixed inset-0'>
         <Experience />
@@ -156,12 +160,12 @@ function Intro() {
   return (
     <>
       <div className='sticky top-0'>
-        <div data-intro-title className={COLUMN}>
+        <div data-intro-title className={`relative ${COLUMN}`}>
           <p className='mb-4 text-xs font-medium tracking-[0.3em] uppercase'>Moonshiners × Brocksbushes</p>
           <h1
             data-letters
             aria-label='Field to Still'
-            className='font-[family-name:var(--font-display)] text-[clamp(3.5rem,9vw,8.5rem)] leading-[0.9] font-light'
+            className='font-[family-name:var(--font-display)] text-[clamp(3.5rem,9vw,8.5rem)] leading-[0.9]'
           >
             <Letters text='Field' />
             <br />
@@ -170,7 +174,9 @@ function Intro() {
           <p className='mt-6 max-w-sm text-lg leading-relaxed text-[#2b1d14]/75'>
             Three spirits from one Northumberland farm&apos;s year.
           </p>
-          <p className='mt-10 text-xs tracking-[0.3em] text-[#2b1d14]/50 uppercase'>Scroll</p>
+          <Actions className='mt-8' />
+          <p className='mt-10 hidden text-xs tracking-[0.3em] text-[#2b1d14]/50 uppercase lg:block'>Scroll</p>
+          <Partners />
         </div>
       </div>
 
@@ -180,7 +186,7 @@ function Intro() {
           <Frosted className='max-w-md'>
             <p
               data-reveal
-              className='font-[family-name:var(--font-display)] text-[clamp(1.75rem,3.2vw,2.75rem)] leading-tight font-light'
+              className='font-[family-name:var(--font-display)] text-[clamp(1.75rem,3.2vw,2.75rem)] leading-tight'
             >
               Strawberries picked at Brocksbushes, near Corbridge. Distilled on Blandford Street, Newcastle.
             </p>
@@ -188,6 +194,69 @@ function Intro() {
         </div>
       </div>
     </>
+  )
+}
+
+const SHOP_URL = 'https://moonshiners.co.uk/shop/'
+const CONTACT_URL = 'https://moonshiners.co.uk/contact/'
+
+/** Where to go next: buy a bottle, or get in touch. */
+function Actions({ className = '' }: { className?: string }) {
+  return (
+    <div className={`pointer-events-auto flex flex-wrap items-center gap-x-6 gap-y-3 ${className}`}>
+      <a
+        href={SHOP_URL}
+        data-cursor='hover'
+        className='group inline-flex items-center gap-2 rounded-full bg-[#2b1d14] px-6 py-3 text-sm font-semibold tracking-wide text-[#fbf3ee] transition-opacity hover:opacity-85'
+      >
+        Shop the collection
+        <span aria-hidden className='transition-transform group-hover:translate-x-1'>
+          →
+        </span>
+      </a>
+      <a
+        href={CONTACT_URL}
+        data-cursor='hover'
+        className='text-sm font-semibold tracking-wide underline decoration-[#2b1d14]/30 underline-offset-4 transition-colors hover:decoration-[#2b1d14]'
+      >
+        Get in touch
+      </a>
+    </div>
+  )
+}
+
+/**
+ * Who made it: the two partners, side by side, then the studio. The page is a
+ * standalone showpiece with no site nav, so these are also its way back to
+ * each of them. At the foot of the opening screen on wide screens; under the
+ * intro on phones.
+ */
+function Partners() {
+  const link = 'pointer-events-auto transition-opacity hover:opacity-70'
+  return (
+    <div className='mt-10 flex flex-wrap items-center gap-x-6 gap-y-4 lg:absolute lg:bottom-[6svh] lg:left-[7vw] lg:mt-0'>
+      <div className='flex items-center gap-4'>
+        <a href='https://moonshiners.co.uk' target='_blank' rel='noopener' className={link} data-cursor='hover'>
+          <Logo className='h-5 w-auto lg:h-6' width={undefined} height={undefined} />
+        </a>
+        <span aria-hidden className='text-sm text-[#2b1d14]/50'>
+          ×
+        </span>
+        <a href='https://www.brocksbushes.co.uk' target='_blank' rel='noopener' className={link} data-cursor='hover'>
+          <Image src='/logos/brocksbushes.svg' alt='Brocksbushes' width={82} height={40} unoptimized className='h-8 w-auto lg:h-10' />
+        </a>
+      </div>
+      <a
+        href='https://layers.studio'
+        target='_blank'
+        rel='noopener'
+        className={`flex items-center gap-2.5 lg:border-l lg:border-[#2b1d14]/20 lg:pl-6 ${link}`}
+        data-cursor='hover'
+      >
+        <span className='text-[10px] tracking-[0.25em] text-[#2b1d14]/55 uppercase'>Made by</span>
+        <Image src='/logos/layers-studio.svg' alt='Layers.Studio' width={82} height={36} unoptimized className='h-8 w-auto lg:h-9' />
+      </a>
+    </div>
   )
 }
 
@@ -225,7 +294,7 @@ function SpiritCopy({ spirit }: { spirit: CollabSpirit }) {
           <h2
             data-letters
             aria-label={spirit.name}
-            className='font-[family-name:var(--font-display)] text-[clamp(2.25rem,6vw,5.5rem)] leading-[0.95] font-light'
+            className='font-[family-name:var(--font-display)] text-[clamp(2.25rem,6vw,5.5rem)] leading-[0.95]'
           >
             <Letters text={spirit.name} />
           </h2>
@@ -260,7 +329,7 @@ function Finale() {
           <h2
             data-letters
             aria-label='One farm. Three bottles.'
-            className='font-[family-name:var(--font-display)] text-[clamp(2.5rem,5vw,4.5rem)] leading-none font-light'
+            className='font-[family-name:var(--font-display)] text-[clamp(2.5rem,5vw,4.5rem)] leading-none'
           >
             <Letters text='One farm. Three bottles.' />
           </h2>
@@ -268,13 +337,24 @@ function Finale() {
             Find them at the Moonshiners Institute on Blandford Street, Newcastle, and at Brocksbushes Farm Shop, near
             Corbridge.
           </p>
-          <footer data-reveal className='pointer-events-auto mt-10 max-w-2xl text-[11px] leading-relaxed text-[#2b1d14]/45'>
-            {/* As credited on the labels themselves. TODO: confirm the artist's name with Moonshiners. */}
+          <div data-reveal>
+            <Actions className='mt-7 justify-center' />
+          </div>
+          {/* As credited on the labels themselves. TODO: confirm the artist's name with Moonshiners. */}
+          <p data-reveal className='pointer-events-auto mt-9 text-sm text-[#2b1d14]/75'>
             Label artwork by{' '}
-            <a className='underline' href='https://www.instagram.com/rachaelcutmoreart/'>
+            <a
+              href='https://www.instagram.com/rachaelcutmoreart/'
+              target='_blank'
+              rel='noopener'
+              data-cursor='hover'
+              className='font-semibold text-[#2b1d14] underline decoration-[#2b1d14]/30 underline-offset-4 transition-colors hover:decoration-[#2b1d14]'
+            >
               @rachaelcutmoreart
             </a>
-            . 3D models: &ldquo;Single Strawberry&rdquo; by aaa888 and &ldquo;3d scanned Cinnamon stick&rdquo; by sfsen,
+          </p>
+          <footer data-reveal className='pointer-events-auto mt-4 max-w-2xl text-[11px] leading-relaxed text-[#2b1d14]/45'>
+            3D models: &ldquo;Single Strawberry&rdquo; by aaa888 and &ldquo;3d scanned Cinnamon stick&rdquo; by sfsen,
             both on Sketchfab, licensed under{' '}
             <a className='underline' href='https://creativecommons.org/licenses/by/4.0/'>
               CC-BY-4.0

@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { COLLAB_SPIRITS } from '@/lib/collabData';
 import type { SceneState } from './story';
-import { WORD_FONT, keepOpaque } from './BackdropWord';
+import { WORD_DETAIL, WORD_FONT, keepOpaque } from './BackdropWord';
 import { seeded } from './Props';
 
 /*
@@ -59,7 +59,7 @@ const TUMBLE = 0.15; // turns a second: the swarms keep tumbling even when you s
 /** How far through its crossing botanical `index` is: 0 = just off screen at the left, 1 = just off at the right. */
 const crossingOf = (s: SceneState, index: number) => (s.flight - FIRST_START - index * NEXT_START) / CROSSING;
 
-/** A rough width: Fraunces capitals are about 0.65 of their size wide. */
+/** A rough width: DM Serif Display capitals are about 0.65 of their size wide. */
 const widthOf = (b: Botanical) => b.word.length * 0.65 * b.size;
 
 /** How far either side of the middle a flight runs, so it starts and ends just out of shot. */
@@ -135,6 +135,7 @@ function FlyingWord({ botanical, index, sceneRef }: FlightProps) {
     <Text
       ref={meshRef}
       font={WORD_FONT}
+      sdfGlyphSize={WORD_DETAIL}
       fontSize={botanical.size}
       letterSpacing={0.04}
       anchorX="center"

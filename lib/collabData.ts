@@ -1,10 +1,8 @@
-import type { Spirit } from './spiritData';
-
 /**
  * Moonshiners × Brocksbushes collaboration range.
  *
- * Unlike the core range, these labels aren't baked into bottle.glb. Each one
- * is a PNG in /public/labels that the bottle wraps onto its label mesh at runtime.
+ * The labels aren't baked into bottle.glb: each one is a PNG in /public/labels
+ * that the bottle wraps onto its label mesh at runtime.
  */
 
 export type Season = 'summer' | 'autumn';
@@ -24,7 +22,14 @@ export interface LiquidLook {
   haze: number;
 }
 
-export interface CollabSpirit extends Omit<Spirit, 'meshIndex' | 'proof' | 'notes'> {
+export interface CollabSpirit {
+  name: string;
+  /** A short line under the name */
+  subtitle: string;
+  /** 2–3 sentences about it */
+  description: string;
+  /** Its accent colour, for its copy */
+  color: string;
   /** Label texture: 2274×1008, same UV layout as the labels in bottle.glb */
   labelUrl: string;
   /** Alcohol by volume, as a percentage */

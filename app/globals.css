@@ -1,26 +1,11 @@
 @import "tailwindcss";
 
-/* Tailwind v4: class-based dark mode */
-@custom-variant dark (&:where(.dark, .dark *));
-
+/* The page's own colours: the gin's blush studio, and dark ink for the copy.
+   (The page paints its own backdrop; this is what shows past its ends, when
+   a phone's scroll bounces.) */
 :root {
-  --background: #f8fafc;
-  --foreground: #09090b;
-  --accent: #f59e0b;
-  --dot-inactive: #d1d5db;
-}
-
-.dark {
-  --background: #09090b;
-  --foreground: #f8fafc;
-  --dot-inactive: #52525b;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --background: #f7e1dd;
+  --foreground: #2b1d14;
 }
 
 * {
@@ -44,6 +29,5 @@ body {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans, Arial, Helvetica, sans-serif);
   -webkit-font-smoothing: antialiased;
 }

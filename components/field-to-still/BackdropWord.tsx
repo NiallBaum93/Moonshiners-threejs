@@ -17,7 +17,14 @@ import { backdropWall } from './Studio';
  * only refracts opaque things.)
  */
 
-export const WORD_FONT = '/fonts/Fraunces144pt-Light.ttf'; // Fraunces, SIL Open Font License
+// Moonshiners' display face (as on moonshiners.co.uk), SIL Open Font License.
+export const WORD_FONT = '/fonts/DMSerifDisplay-Regular.ttf';
+/**
+ * How finely troika draws each letter (it renders them from small distance
+ * maps). Its default, 64, loses a serif face's hairlines, breaking the
+ * letters up; 128 keeps them whole.
+ */
+export const WORD_DETAIL = 128;
 
 /**
  * Troika (drei's text renderer) makes every text material transparent, which
@@ -46,7 +53,7 @@ export function BackdropWord({ word, color, presenceRef }: BackdropWordProps) {
   const materialRef = useRef<THREE.MeshBasicMaterial>(null);
   const meshRef = useRef<THREE.Mesh>(null);
   const tint = useMemo(() => new THREE.Color(color), [color]);
-  // A rough fit: Fraunces capitals are about 0.65 of their size wide.
+  // A rough fit: DM Serif Display capitals are about 0.65 of their size wide.
   const size = Math.min(MAX_SIZE, MAX_WIDTH / (word.length * 0.65));
 
   useFrame(() => {
@@ -61,6 +68,7 @@ export function BackdropWord({ word, color, presenceRef }: BackdropWordProps) {
     <Text
       ref={meshRef}
       font={WORD_FONT}
+      sdfGlyphSize={WORD_DETAIL}
       fontSize={size}
       letterSpacing={0.04}
       anchorX="center"

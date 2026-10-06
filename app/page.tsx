@@ -1,15 +1,10 @@
-import { HeroSection }    from '@/components/HeroSection';
-import { FieldToStillTeaser } from '@/components/FieldToStillTeaser';
-import { SpiritsSection } from '@/components/SpiritsSection';
-import { ProcessSection } from '@/components/ProcessSection';
+import { FieldToStill } from '@/components/field-to-still/FieldToStill'
 
+/**
+ * Field to Still: the Moonshiners × Brocksbushes showpiece, and the only page
+ * on this site (bound for its own subdomain). The original Moonshiners site
+ * experiments live on the archive/original-site branch.
+ */
 export default function Home() {
-  return (
-    <main>
-      <HeroSection />
-      <FieldToStillTeaser />
-      <SpiritsSection />
-      <ProcessSection />
-    </main>
-  );
+  return <FieldToStill />
 }
