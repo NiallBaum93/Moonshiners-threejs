@@ -177,6 +177,12 @@ function liquidShader(shader: THREE.WebGLProgramParametersWithUniforms, uniforms
   }
 }
 
+/** Whether it's in the picture: it, and everything it's part of, is visible. */
+function onStage(object: THREE.Object3D) {
+  for (let o: THREE.Object3D | null = object.parent; o; o = o.parent) if (!o.visible) return false;
+  return true;
+}
+
 export function Liquid({ geometry, glassScale, color, depth, haze, level, fillRef, pourRef, shoveRef, carrierRef }: LiquidProps) {
   const groupRef = useRef<THREE.Group>(null);
 
@@ -294,7 +300,11 @@ export function Liquid({ geometry, glassScale, color, depth, haze, level, fillRe
     sim.lastSpin = spin;
     sim.lastAngle = angle;
 
-    // 2. Hand it to the simulation, turned into the bottle's own frame.
+    // 2. Hand it to the simulation, turned into the bottle's own frame. Unless
+    //    the bottle's off stage (hidden, waiting its turn): then there's
+    //    nothing to see, so it's left as it is. Its motion is still tracked
+    //    above, so it carries on smoothly when it comes back.
+    if (!onStage(group)) return;
     _push.copy(sim.acceleration).applyQuaternion(_rotation.invert());
     const pour = pourRef?.current ?? 0;
     if (pour > 0.01) sim.field.drop(0, 0, POUR_RADIUS, POUR_PUSH * pour * dt);

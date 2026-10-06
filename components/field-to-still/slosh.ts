@@ -19,14 +19,24 @@ const GRAVITY = 9.81; // m/s²
 const CELL = 0.0015; // m: each cell is 1.5mm square
 const SLOSH_FREQUENCY = 19; // rad/s: the main back-and-forth slosh, ~3 a second
 const DAMPING = 4; // per second: how quickly the motion dies away (a slosh settles in about a second)
-const MAX_STEP = 1 / 1000; // s: a stability limit, small enough for the fastest waves
+// s: a stability limit. The waves (about 0.5 m/s) mustn't cross more than
+// about a cell per step; this keeps them to three quarters of one.
+const MAX_STEP = 1.5 / 1000;
 const MAX_HEIGHT = 0.02; // m: however hard it's shaken, waves stay inside the bottle
 const MAX_PUSH = 25; // m/s²: a hard shake, about 2.5g
 
 // Viscosity, roughly: each step, every cell eases this far towards its
 // neighbours' average. Ripples a few cells wide flatten within a fraction of
-// a second; the big slosh, many cells long, barely notices.
-const SMOOTHING = 0.04;
+// a second; the big slosh, many cells long, barely notices. (Per step, so it
+// goes with MAX_STEP: 0.04 a millisecond.)
+const SMOOTHING = 0.06;
+// When nothing's moving the bottle and its surface is this still (both its
+// heights and its flows), it's asleep: there's nothing to simulate.
+const STILL_HEIGHT = 2e-6; // m
+const STILL_FLOW = 2e-6; // m/s
+const STILL_PUSH = 0.02; // m/s²
+const STILL_SPIN = 0.01; // rad/s
+const STILL_SPIN_RATE = 0.1; // rad/s²
 
 export class SloshField {
   /** Cells across the bottle's thin side (x) and long side (z) */
@@ -45,6 +55,7 @@ export class SloshField {
   private readonly depth: number;
   private readonly scratch: Float32Array;
   private readonly pixels: Uint16Array;
+  private asleep = false;
 
   /**
    * @param width the inside of the bottle across x, in metres
@@ -99,10 +110,28 @@ export class SloshField {
     az = clamp(az, -MAX_PUSH, MAX_PUSH);
     spinRate = clamp(spinRate, -MAX_PUSH / this.halfZ, MAX_PUSH / this.halfZ);
 
+    // Asleep (settled, and nothing's moving it)? Then it stays exactly as it is.
+    const still =
+      Math.abs(ax) < STILL_PUSH &&
+      Math.abs(az) < STILL_PUSH &&
+      Math.abs(spin) < STILL_SPIN &&
+      Math.abs(spinRate) < STILL_SPIN_RATE;
+    if (still && this.asleep) return;
+
     // Small steps keep it stable: a wave mustn't cross more than a cell per step.
     const steps = Math.ceil(dt / MAX_STEP);
     for (let s = 0; s < steps; s++) this.substep(dt / steps, ax, az, spin, spinRate);
     this.upload();
+    this.asleep = still && this.settled();
+  }
+
+  /** Whether the surface has come to rest: flat, and nothing flowing. */
+  private settled() {
+    const { height, flowX, flowZ } = this;
+    for (let c = 0; c < height.length; c++) if (Math.abs(height[c]) > STILL_HEIGHT) return false;
+    for (let f = 0; f < flowX.length; f++) if (Math.abs(flowX[f]) > STILL_FLOW) return false;
+    for (let f = 0; f < flowZ.length; f++) if (Math.abs(flowZ[f]) > STILL_FLOW) return false;
+    return true;
   }
 
   private substep(dt: number, ax: number, az: number, spin: number, spinRate: number) {
@@ -195,6 +224,7 @@ export class SloshField {
    */
   drop(x: number, z: number, radius: number, strength: number) {
     const { nx, nz, height, wet, halfX, halfZ } = this;
+    this.asleep = false;
     let pushed = 0;
     let wetCells = 0;
     for (let j = 0; j < nz; j++) {

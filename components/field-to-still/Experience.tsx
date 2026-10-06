@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, useRef } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Suspense, useEffect, useRef } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { sceneAt, type SceneState } from './story';
 import { Director } from './Director';
@@ -45,7 +45,39 @@ export default function Experience() {
         <Stage sceneRef={sceneRef} surgeRef={surgeRef} />
         <Props sceneRef={sceneRef} />
         <Botanicals sceneRef={sceneRef} />
+        <Precompile />
       </Suspense>
     </Canvas>
   );
+}
+
+/**
+ * Three builds each material's shader the first time it draws it, which can
+ * stall a frame for a moment. Most of the scene starts hidden (the bottles
+ * waiting their turn, the rain, the botanicals), so that would happen
+ * mid-scroll, as each first appears. Instead, once everything's loaded, draw
+ * it all once: everything shown, nothing skipped for being out of shot.
+ *
+ * It's a real draw, not just `gl.compile`, because things seen through the
+ * liquid are drawn a second time, for it to bend, with shaders of their own,
+ * which only a real draw builds. Then the scene goes back as it was and is
+ * drawn again straight away, and only that second picture reaches the screen.
+ */
+function Precompile() {
+  const { gl, scene, camera } = useThree();
+  useEffect(() => {
+    const changed: [THREE.Object3D, boolean, boolean][] = [];
+    scene.traverse((object) => {
+      changed.push([object, object.visible, object.frustumCulled]);
+      object.visible = true;
+      object.frustumCulled = false;
+    });
+    gl.render(scene, camera);
+    for (const [object, visible, culled] of changed) {
+      object.visible = visible;
+      object.frustumCulled = culled;
+    }
+    gl.render(scene, camera);
+  }, [gl, scene, camera]);
+  return null;
 }

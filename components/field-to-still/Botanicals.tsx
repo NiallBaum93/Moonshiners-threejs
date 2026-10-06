@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useMemo, useRef, type RefObject } from 'react';
+import { Fragment, useEffect, useMemo, useRef, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Clone, Text, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
@@ -249,6 +249,17 @@ function Seeds({ kind, botanical, index, sceneRef }: FlightProps & { kind: SeedK
     [look.count, index],
   );
 
+  // Give each seed its own colour, straight away: they change which shader the
+  // material needs, and it's built up front, before anything's on screen (see Precompile).
+  useEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+    const random = seeded(index + 23);
+    const [dark, light] = look.colors.map((c) => new THREE.Color(c));
+    pieces.forEach((_, i) => mesh.setColorAt(i, _color.lerpColors(dark, light, random())));
+    mesh.instanceColor!.needsUpdate = true;
+  }, [index, look.colors, pieces]);
+
   useFrame((state, delta) => {
     const mesh = meshRef.current;
     if (!mesh) return;
@@ -257,13 +268,6 @@ function Seeds({ kind, botanical, index, sceneRef }: FlightProps & { kind: SeedK
     // Nothing to do while the whole swarm is off screen.
     mesh.visible = crossing > -0.2 && crossing < 1.2;
     if (!mesh.visible) return;
-
-    // The first time round, give each seed its own colour.
-    if (!mesh.instanceColor) {
-      const random = seeded(index + 23);
-      const [dark, light] = look.colors.map((c) => new THREE.Color(c));
-      pieces.forEach((_, i) => mesh.setColorAt(i, _color.lerpColors(dark, light, random())));
-    }
 
     const reach = reachOf(botanical, state.camera as THREE.PerspectiveCamera);
     pieces.forEach((piece, i) => {
