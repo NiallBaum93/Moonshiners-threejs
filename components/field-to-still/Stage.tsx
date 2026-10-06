@@ -74,7 +74,8 @@ function StagedBottle({ spirit, index, sceneRef, surgeRef }: StageProps & { spir
     let y = away > 0 ? Math.min(away, 1) * dropHeight : 0;
     // The finale gathers all three, side by side. The one on stage steps
     // aside; the others are lowered into their places, so none of them
-    // pass through each other on the way.
+    // pass through each other on the way. (The lineup waits for any bottle
+    // swap to finish, see Director, so by then the others are out of shot.)
     const place = (index - 1) * LINEUP_SPACING;
     if (s.lineup > 0 && Math.abs(away) >= 0.5) {
       x = place;

@@ -55,6 +55,14 @@ export function Director({ sceneRef, surgeRef }: DirectorProps) {
       s[key] = THREE.MathUtils.damp(s[key], halfway[key], CATCH_UP, dt);
     }
 
+    // The lineup waits for the bottle swap before it to finish. A fast scroll
+    // can otherwise start it while a bottle is still partway off stage, and
+    // the lineup lifts any bottle that isn't on stage straight up above its
+    // place, so it would vanish mid-screen. (Within 0.03 of a whole bottle,
+    // the outgoing one is already out of shot.)
+    const swapping = Math.abs(s.bottle - Math.round(s.bottle));
+    s.lineup *= 1 - THREE.MathUtils.smoothstep(swapping, 0, 0.03);
+
     // The surge: how quickly the (eased) scroll is speeding up or slowing down.
     const scroll = scrollRef.current;
     const speed = Number.isNaN(scroll.last) ? 0 : (s.scroll - scroll.last) / dt;
