@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useRef, type ReactNode } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import { DM_Serif_Display, Inter } from 'next/font/google'
@@ -33,8 +33,33 @@ const Experience = dynamic(() => import('./Experience'), {
  */
 export function FieldToStill() {
   const pageRef = useRef<HTMLElement>(null)
+  // Everything loads, and every shader is built, behind a loading screen, so
+  // the scroll is smooth from the first moment. Scrolling waits for it.
+  const [progress, setProgress] = useState(0)
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
+    // Every visit starts at the top, where the story does.
+    history.scrollRestoration = 'manual'
+    window.scrollTo(0, 0)
+  }, [])
+
+  useEffect(() => {
+    if (ready) return
+    const root = document.documentElement
+    root.style.overflow = 'hidden'
+    // If something never loads (no WebGL, say), don't keep the page locked forever.
+    const giveUp = setTimeout(() => setReady(true), GIVE_UP_AFTER)
+    return () => {
+      root.style.overflow = ''
+      clearTimeout(giveUp)
+    }
+  }, [ready])
+
+  // The scroll animations start once the loading screen starts to lift, so the
+  // headline's entrance plays as it fades.
+  useEffect(() => {
+    if (!ready) return
     const page = pageRef.current!
     const phones = gsap.matchMedia() // animations only for small screens, undone if it grows
     const ctx = gsap.context(() => {
@@ -115,7 +140,7 @@ export function FieldToStill() {
       phones.revert()
       ctx.revert()
     }
-  }, [])
+  }, [ready])
 
   // overflow-x-clip: on phones the copy's frost reaches past the screen's
   // sides, which would let the page scroll sideways. (Clip, not hidden, which
@@ -124,8 +149,11 @@ export function FieldToStill() {
     <main ref={pageRef} className={`${display.variable} ${body.variable} relative overflow-x-clip font-[family-name:var(--font-body)] bg-[#f7e1dd] text-[#2b1d14]`}>
       {/* The studio. The copy above it ignores the pointer, so you can still pick up the bottle. */}
       <div className='fixed inset-0'>
-        <Experience />
+        {/* Files load in more than one batch, and the count starts again with
+            each; the loading screen's level only ever rises. */}
+        <Experience onProgress={(p) => setProgress((was) => Math.max(was, p))} onReady={() => setReady(true)} />
       </div>
+      <Loader progress={progress} ready={ready} />
 
       <div className='pointer-events-none relative'>
         {BEATS.map((beat) => (
@@ -135,6 +163,72 @@ export function FieldToStill() {
         ))}
       </div>
     </main>
+  )
+}
+
+const GIVE_UP_AFTER = 30_000 // ms
+
+/**
+ * The loading screen: a line drawing of the flask, filling with liqueur as
+ * the models and labels arrive, its surface gently rolling. Once the scene's
+ * ready, it fills to the shoulder, the cork pops, and the screen fades away
+ * to reveal the studio already running.
+ */
+// The flask, in a 100 × 160 box: neck, shoulders, body, rounded base.
+const FLASK = 'M38 18V30C38 38 12 40 12 56V146Q12 154 20 154H80Q88 154 88 146V56C88 40 62 38 62 30V18'
+const FLASK_INSIDE = `${FLASK}Z`
+const FULL = 40 // the liquid's surface when full: at the shoulder
+const EMPTY = 154 // and empty: on the base
+// The Moonshiners star (from the logo), with its teardrop cut out.
+const STAR =
+  'M34.6457 13.0673H21.4113L20.533 10.274C19.7456 7.94109 18.8674 5.17847 18.2617 3.15255L17.3228 0.297852L17.1714 0.758287C16.6263 2.50794 14.8395 8.30943 13.5675 11.9622L13.2041 13.0673H0L10.7208 20.9561L6.63234 33.7255L17.3531 25.8367L28.0739 33.7255L23.9855 20.9561L34.7062 13.0673H34.6457ZM14.8092 15.1546C15.4149 13.7426 16.4143 10.7344 17.3228 7.849C18.2617 10.7344 19.2611 13.7426 19.8062 15.1546C20.1999 16.1061 20.1999 17.0884 19.8667 17.8865C19.5639 18.5618 19.0491 19.0222 18.3222 19.2678C18.2617 19.2678 18.1708 19.3292 18.1102 19.3292C17.9285 19.3599 17.7165 19.3906 17.4743 19.3906H17.3228C17.2925 19.3906 17.2623 19.3906 17.2623 19.3906C17.232 19.3906 17.1714 19.3906 17.1411 19.3906C16.8988 19.3906 16.7171 19.3906 16.5051 19.3292C16.4446 19.3292 16.3537 19.2985 16.2932 19.2678C15.5663 19.0222 15.0212 18.5311 14.7184 17.8558C14.3549 17.0577 14.3852 16.1061 14.7789 15.1546H14.8092Z'
+
+function Loader({ progress, ready }: { progress: number; ready: boolean }) {
+  const [gone, setGone] = useState(false)
+  if (gone) return null
+  // Hold just short of full until it's really ready (loaded isn't yet built).
+  const shown = ready ? 100 : Math.min(progress, 94)
+  const level = EMPTY - (EMPTY - FULL) * (shown / 100)
+  return (
+    <div
+      role='status'
+      aria-label={ready ? 'Loaded' : `Loading, ${Math.round(shown)}%`}
+      onTransitionEnd={(e) => e.target === e.currentTarget && ready && setGone(true)}
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#f7e1dd] transition-opacity duration-[900ms] ease-out ${ready ? 'pointer-events-none opacity-0 delay-[650ms]' : ''}`}
+    >
+      <svg viewBox='0 -12 100 172' className='h-44 w-auto overflow-visible sm:h-52' aria-hidden>
+        <defs>
+          <clipPath id='loader-flask'>
+            <path d={FLASK_INSIDE} />
+          </clipPath>
+        </defs>
+        {/* The liquid: a rolling surface, risen to the level loaded so far. */}
+        <g clipPath='url(#loader-flask)'>
+          <g className='transition-transform duration-700 ease-out' style={{ transform: `translateY(${level}px)` }}>
+            <path
+              d='M0 0Q25 -3.5 50 0T100 0T150 0T200 0T250 0T300 0V130H0Z'
+              fill='#d9536a'
+              fillOpacity={0.85}
+              className='motion-safe:animate-[loader-wave_2.4s_linear_infinite]'
+            />
+          </g>
+        </g>
+        {/* The glass, the star on its label, and the cork, which pops when it's done. */}
+        <path d={FLASK} fill='none' stroke='#2b1d14' strokeWidth={1.5} strokeLinejoin='round' />
+        <path d={STAR} fill='#FF0000' transform='translate(39.6 92) scale(0.6)' />
+        <g
+          className='transition-transform duration-500 ease-[cubic-bezier(0.34,1.8,0.64,1)]'
+          style={{ transform: ready ? 'translate(6px, -16px) rotate(-16deg)' : 'none', transformOrigin: '50px 10px' }}
+        >
+          <rect x={40.5} y={2} width={19} height={18} rx={2.5} fill='#c49a6c' stroke='#2b1d14' strokeWidth={1.5} />
+        </g>
+      </svg>
+      <p className='mt-8 mb-2 text-[10px] font-medium tracking-[0.3em] text-[#2b1d14]/60 uppercase'>
+        Moonshiners × Brocksbushes
+      </p>
+      <p className='font-[family-name:var(--font-display)] text-3xl sm:text-4xl'>Field to Still</p>
+      <p className='mt-3 text-[10px] tracking-[0.25em] text-[#2b1d14]/45 tabular-nums'>{Math.round(shown)}%</p>
+    </div>
   )
 }
 

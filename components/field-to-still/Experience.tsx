@@ -1,7 +1,8 @@
 'use client';
 
-import { Suspense, useEffect, useRef } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
+import { PerformanceMonitor, useProgress } from '@react-three/drei';
 import * as THREE from 'three';
 import { sceneAt, type SceneState } from './story';
 import { Director } from './Director';
@@ -30,7 +31,20 @@ const STYLE = { touchAction: 'pan-y' } as const;
 // R3F's default ACES shifts reds and oranges, which our labels are full of.
 const GL = { antialias: true, toneMapping: THREE.NeutralToneMapping };
 
-export default function Experience() {
+interface ExperienceProps {
+  /** How much has loaded so far, 0 → 100 */
+  onProgress: (percent: number) => void;
+  /** Called once, when everything's loaded, built and drawn: the loading screen can go. */
+  onReady: () => void;
+}
+
+export default function Experience({ onProgress, onReady }: ExperienceProps) {
+  const { progress } = useProgress(); // models, textures and fonts loaded, of those requested
+  useEffect(() => onProgress(progress), [progress, onProgress]);
+  // Full Retina sharpness where the machine keeps up; if it can't, drop the
+  // scene (not the page's text) to 1.5×, then 1.25×, where it's far lighter.
+  const [dpr, setDpr] = useState(2);
+
   // What the scene looks like right now, eased towards the scroll position.
   // Director writes it every frame; everything else reads it.
   const sceneRef = useRef<SceneState>(sceneAt(0));
@@ -38,14 +52,16 @@ export default function Experience() {
   const surgeRef = useRef(0);
 
   return (
-    <Canvas camera={CAMERA} gl={GL} dpr={[1, 2]} shadows="percentage" style={STYLE}>
+    <Canvas camera={CAMERA} gl={GL} dpr={[1, dpr]} shadows="percentage" style={STYLE}>
       <Director sceneRef={sceneRef} surgeRef={surgeRef} />
       <Studio sceneRef={sceneRef} />
       <Suspense fallback={null}>
         <Stage sceneRef={sceneRef} surgeRef={surgeRef} />
         <Props sceneRef={sceneRef} />
         <Botanicals sceneRef={sceneRef} />
-        <Precompile />
+        <Precompile onReady={onReady} />
+        {/* Only judged once everything's loaded: loading is always a bit jerky. */}
+        <PerformanceMonitor flipflops={2} onDecline={() => setDpr(1.5)} onFallback={() => setDpr(1.25)} />
       </Suspense>
     </Canvas>
   );
@@ -63,7 +79,7 @@ export default function Experience() {
  * which only a real draw builds. Then the scene goes back as it was and is
  * drawn again straight away, and only that second picture reaches the screen.
  */
-function Precompile() {
+function Precompile({ onReady }: { onReady: () => void }) {
   const { gl, scene, camera } = useThree();
   useEffect(() => {
     const changed: [THREE.Object3D, boolean, boolean][] = [];
@@ -78,6 +94,10 @@ function Precompile() {
       object.frustumCulled = culled;
     }
     gl.render(scene, camera);
-  }, [gl, scene, camera]);
+    // Ready once a couple of ordinary frames have gone by too, so the first
+    // thing anyone sees is the scene running smoothly.
+    let frame = requestAnimationFrame(() => (frame = requestAnimationFrame(onReady)));
+    return () => cancelAnimationFrame(frame);
+  }, [gl, scene, camera, onReady]);
   return null;
 }

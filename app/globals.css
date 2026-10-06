@@ -31,3 +31,10 @@ body {
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
 }
+
+/* The loading screen's liquid: its surface rolls endlessly sideways, one wave
+   (100 units) per loop. */
+@keyframes loader-wave {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100px); }
+}

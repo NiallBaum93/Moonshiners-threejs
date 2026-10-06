@@ -54,12 +54,20 @@ const summer = palette(GIN); // gin to liqueur, as far as the scene's got: worke
 
 // The two tall light strips that make the glass's main highlights, placed by
 // angle around the bottle (radians, 0 = to its right) and distance. As you
-// scroll they drift around it, so the highlights glide across the glass, like
-// a photographer moving a softbox.
-const KEY_STRIP = { angle: 2.36, distance: 4.24, height: 1.5 };
-const RIM_STRIP = { angle: 0.4, distance: 3.81, height: 1 };
+// scroll, the whole rig turns a little about the bottle, so the highlights
+// glide across the glass, like a photographer moving the softboxes.
+const KEY_STRIP = strip(2.36, 4.24, 1.5);
+const RIM_STRIP = strip(0.4, 3.81, 1);
 const SWEEP = 0.3; // radians either way
 const SWEEP_PER_SCREEN = 0.9; // radians of the sweep's cycle per screen scrolled
+
+/** A strip's place, `distance` out at `angle` around the bottle, and where it faces. */
+function strip(angle: number, distance: number, height: number) {
+  return {
+    position: [Math.cos(angle) * distance, height, Math.sin(angle) * distance] as [number, number, number],
+    target: [0, height * 0.3, 0] as [number, number, number],
+  };
+}
 
 // The backdrop's colours. There's only ever one studio, so they can live here
 // and change every frame without involving React.
@@ -74,14 +82,12 @@ export const backdropWall = domeUniforms.uWall.value;
 
 export function Studio({ sceneRef }: { sceneRef?: RefObject<SceneState> }) {
   const keyRef = useRef<THREE.DirectionalLight>(null);
-  const keyStripRef = useRef<THREE.Mesh>(null);
-  const rimStripRef = useRef<THREE.Mesh>(null);
 
-  useFrame(() => {
-    // The strips sweep as you scroll, in opposite directions.
-    const sweep = Math.sin((sceneRef?.current.scroll ?? 0) * SWEEP_PER_SCREEN) * SWEEP;
-    place(keyStripRef.current, KEY_STRIP, sweep);
-    place(rimStripRef.current, RIM_STRIP, -sweep);
+  useFrame(({ scene }) => {
+    // The light rig sweeps as you scroll. Turning the finished reflections
+    // costs nothing, where moving the strips would mean re-rendering them
+    // every frame, which was most of the scene's work.
+    scene.environmentRotation.y = Math.sin((sceneRef?.current.scroll ?? 0) * SWEEP_PER_SCREEN) * SWEEP;
 
     // Gin pink to liqueur red as the liqueur arrives, then rum orange as autumn
     // comes in just ahead of the rum. (In the finale the bottle number runs on
@@ -116,12 +122,12 @@ export function Studio({ sceneRef }: { sceneRef?: RefObject<SceneState> }) {
         a cube map that every shiny material reflects. Long thin strips on a
         dark surround are what give glass bottles their crisp highlights and
         defined edges. They sit 3+ units out because the cube camera can't see
-        anything closer than 1. The map is re-rendered every frame (frames=
-        Infinity) so the strips can move; 256 pixels a side keeps that cheap.
+        anything closer than 1. The map is rendered once (frames={1}); the
+        sweep turns it rather than re-rendering it.
       */}
-      <Environment resolution={256} frames={Infinity}>
-        <Lightformer ref={keyStripRef} form="rect" intensity={5} scale={[1.2, 6, 1]} />
-        <Lightformer ref={rimStripRef} form="rect" intensity={3} scale={[0.6, 6, 1]} />
+      <Environment resolution={256} frames={1}>
+        <Lightformer form="rect" intensity={5} scale={[1.2, 6, 1]} {...KEY_STRIP} />
+        <Lightformer form="rect" intensity={3} scale={[0.6, 6, 1]} {...RIM_STRIP} />
         <Lightformer form="rect" intensity={2} position={[0, 1, -4]} scale={[6, 0.8, 1]} target={[0, 0, 0]} />
         <Lightformer form="circle" intensity={1.5} position={[0, 5, 0]} scale={4} target={[0, 0, 0]} />
         {/* The backdrop, low on the horizon behind the bottle. A liquid surface
@@ -166,12 +172,4 @@ export function Studio({ sceneRef }: { sceneRef?: RefObject<SceneState> }) {
       </mesh>
     </>
   );
-}
-
-/** Put a light strip at its angle (plus the sweep) around the bottle, facing it. */
-function place(strip: THREE.Mesh | null, at: typeof KEY_STRIP, sweep: number) {
-  if (!strip) return;
-  const angle = at.angle + sweep;
-  strip.position.set(Math.cos(angle) * at.distance, at.height, Math.sin(angle) * at.distance);
-  strip.lookAt(0, at.height * 0.3, 0);
 }
