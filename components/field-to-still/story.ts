@@ -13,10 +13,10 @@
 export const BEATS = [
   { id: 'intro', screens: 3 }, // strawberries fall, the cork pops, the gin pours in
   { id: 'gin', screens: 1.5 },
-  { id: 'botanicals', screens: 2.5 }, // the gin turns, centre stage, as its botanicals fly past
-  { id: 'liqueur', screens: 2 }, // the liqueur slides in
-  { id: 'rum', screens: 2.5 }, // autumn arrives, then the rum slides in
-  { id: 'finale', screens: 2 }, // all three, side by side
+  { id: 'botanicals', screens: 3 }, // the gin turns, centre stage, as its botanicals fly past
+  { id: 'liqueur', screens: 2 },
+  { id: 'rum', screens: 2 }, // autumn
+  { id: 'finale', screens: 1.5 }, // all three, side by side
 ] as const;
 
 export type BeatId = (typeof BEATS)[number]['id'];
@@ -66,12 +66,23 @@ function progress(position: number, id: BeatId) {
   return Math.min(Math.max((position - BEAT_START[id]) / beat.screens, 0), 1);
 }
 
+/**
+ * The scene change into a beat, 0 → 1. Each beat's copy is pinned to the
+ * screen for its section, and over the screen before it starts, the old copy
+ * scrolls away as the new copy scrolls in. The scene changes in that same
+ * screen (`from` and `to` are fractions of it), so each spirit's copy only
+ * ever sits beside its own bottle.
+ */
+function handover(position: number, id: BeatId, from = 0.2, to = 0.9) {
+  const screenBefore = BEAT_START[id] - 1;
+  return ramp(position, screenBefore + from, screenBefore + to);
+}
+
 export function sceneAt(position: number): SceneState {
   const intro = progress(position, 'intro');
-  const botanicals = progress(position, 'botanicals');
-  const liqueur = progress(position, 'liqueur');
-  const rum = progress(position, 'rum');
-  const finale = progress(position, 'finale');
+  // The botanicals fly while their caption is pinned, landing before the liqueur's handover.
+  const takeOff = BEAT_START.botanicals - 0.1;
+  const landing = BEAT_START.liqueur - 0.9;
 
   return {
     scroll: position,
@@ -79,12 +90,11 @@ export function sceneAt(position: number): SceneState {
     // Out just before the pour, back in once it's full.
     cork: ramp(intro, 0.35, 0.45) - ramp(intro, 0.82, 0.92),
     fill: ramp(intro, 0.45, 0.8),
-    botanicals: ramp(botanicals, 0, 0.15) - ramp(botanicals, 0.85, 1),
-    flight: botanicals,
-    bottle: ramp(liqueur, 0, 0.4) + ramp(rum, 0.25, 0.65),
-    autumn: ramp(rum, 0, 0.5),
-    // `position` is the top of the screen, so at the very bottom of the page
-    // it stops one screen short of the end: the finale has to finish by halfway.
-    lineup: ramp(finale, 0, 0.45),
+    botanicals: handover(position, 'botanicals') - handover(position, 'liqueur', 0, 0.6),
+    flight: Math.min(Math.max((position - takeOff) / (landing - takeOff), 0), 1),
+    bottle: handover(position, 'liqueur') + handover(position, 'rum'),
+    // The studio warms just ahead of the rum.
+    autumn: handover(position, 'rum', 0, 0.7),
+    lineup: handover(position, 'finale'),
   };
 }

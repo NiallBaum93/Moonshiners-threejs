@@ -6,10 +6,12 @@ import { Environment, Lightformer } from '@react-three/drei';
 import * as THREE from 'three';
 import type { SceneState } from './story';
 
-// The studio's colours through the farm's year: a cool cream for the
-// strawberry summer, warming to oat and amber for the pumpkin patch.
-const SUMMER = { floor: '#e3d9cc', wall: '#efe8df', glow: '#fbf8f3', key: '#fff3e2' };
-const AUTUMN = { floor: '#d9c3a8', wall: '#eadac6', glow: '#fbf1e4', key: '#ffdcb0' };
+// The studio takes its colour from whichever spirit is on stage, a pale wash
+// of its liquid: blush pink for the gin, rosy red for the strawberry liqueur,
+// and orange for the pumpkin rum (which stays for the finale, at autumn's end).
+const GIN = { floor: '#ecd0cb', wall: '#f7e1dd', glow: '#fdf1ee', key: '#fff0e8' };
+const LIQUEUR = { floor: '#e2aeab', wall: '#efc6c2', glow: '#fbe5e1', key: '#ffe1da' };
+const RUM = { floor: '#e5b385', wall: '#f2cea5', glow: '#fde9d3', key: '#ffd39e' };
 
 // A seamless photo-studio "cove": a giant sphere around the scene, seen from
 // the inside, shaded with a soft vertical gradient and a glow behind the bottle.
@@ -39,14 +41,16 @@ const domeFragment = /* glsl */ `
   }
 `;
 
-const palette = (p: typeof SUMMER) => ({
+const palette = (p: typeof GIN) => ({
   floor: new THREE.Color(p.floor),
   wall: new THREE.Color(p.wall),
   glow: new THREE.Color(p.glow),
   key: new THREE.Color(p.key),
 });
-const summer = palette(SUMMER);
-const autumn = palette(AUTUMN);
+const gin = palette(GIN);
+const liqueur = palette(LIQUEUR);
+const rum = palette(RUM);
+const summer = palette(GIN); // gin to liqueur, as far as the scene's got: worked out every frame
 
 // The two tall light strips that make the glass's main highlights, placed by
 // angle around the bottle (radians, 0 = to its right) and distance. As you
@@ -60,9 +64,9 @@ const SWEEP_PER_SCREEN = 0.9; // radians of the sweep's cycle per screen scrolle
 // The backdrop's colours. There's only ever one studio, so they can live here
 // and change every frame without involving React.
 const domeUniforms = {
-  uFloor: { value: summer.floor.clone() },
-  uWall: { value: summer.wall.clone() },
-  uGlow: { value: summer.glow.clone() },
+  uFloor: { value: gin.floor.clone() },
+  uWall: { value: gin.wall.clone() },
+  uGlow: { value: gin.glow.clone() },
 };
 
 /** The backdrop's colour right now (it shifts with the seasons). Read it, don't change it. */
@@ -79,12 +83,19 @@ export function Studio({ sceneRef }: { sceneRef?: RefObject<SceneState> }) {
     place(keyStripRef.current, KEY_STRIP, sweep);
     place(rimStripRef.current, RIM_STRIP, -sweep);
 
-    // Blend between the seasons as the scroll goes from summer to autumn.
-    const t = sceneRef?.current.autumn ?? 0;
-    domeUniforms.uFloor.value.lerpColors(summer.floor, autumn.floor, t);
-    domeUniforms.uWall.value.lerpColors(summer.wall, autumn.wall, t);
-    domeUniforms.uGlow.value.lerpColors(summer.glow, autumn.glow, t);
-    keyRef.current?.color.lerpColors(summer.key, autumn.key, t);
+    // Gin pink to liqueur red as the liqueur arrives, then rum orange as autumn
+    // comes in just ahead of the rum. (In the finale the bottle number runs on
+    // past the liqueur, but autumn's taken over by then.)
+    const s = sceneRef?.current;
+    const toLiqueur = THREE.MathUtils.clamp(s?.bottle ?? 0, 0, 1);
+    const toRum = s?.autumn ?? 0;
+    for (const key of ['floor', 'wall', 'glow', 'key'] as const) {
+      summer[key].lerpColors(gin[key], liqueur[key], toLiqueur);
+    }
+    domeUniforms.uFloor.value.lerpColors(summer.floor, rum.floor, toRum);
+    domeUniforms.uWall.value.lerpColors(summer.wall, rum.wall, toRum);
+    domeUniforms.uGlow.value.lerpColors(summer.glow, rum.glow, toRum);
+    keyRef.current?.color.lerpColors(summer.key, rum.key, toRum);
   });
 
   return (

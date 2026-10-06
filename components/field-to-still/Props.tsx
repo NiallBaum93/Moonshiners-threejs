@@ -26,8 +26,7 @@ interface Kind {
 }
 
 const KINDS: Kind[] = [
-  { model: 'strawberry-a', season: 'summer', count: 9, scale: [0.9, 1.15] },
-  { model: 'strawberry-b', season: 'summer', count: 9, scale: [0.9, 1.15] },
+  { model: 'strawberry-a', season: 'summer', count: 18, scale: [0.85, 1.2] },
   { model: 'pumpkin-4', season: 'autumn', count: 2, scale: [0.18, 0.24] },
   { model: 'pumpkin-5', season: 'autumn', count: 2, scale: [0.16, 0.2] },
   { model: 'pumpkin-6', season: 'autumn', count: 2, scale: [0.2, 0.26] },

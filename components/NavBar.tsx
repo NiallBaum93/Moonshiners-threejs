@@ -28,7 +28,7 @@ const NAV_LINKS = [
 
 const LIGHT_ONLY_PAGES = ['/brocksbushes'];
 
-const CREAM = 'rgba(239,232,223,0.85)'; // the Field to Still studio's backdrop
+const CREAM = 'rgba(255,248,243,0.5)'; // light frost: the Field to Still studio's colour shows through
 const INK   = '#2b1d14';
 
 const isDark         = () => document.documentElement.classList.contains('dark');

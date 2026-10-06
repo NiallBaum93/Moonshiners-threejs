@@ -12,9 +12,11 @@ import { Bubbles } from './Bubbles';
 import { BackdropWord } from './BackdropWord';
 
 // Bottle changes: the old one slides out to the right (away from the copy),
-// the new one is lowered in from above. Both distances are enough to be off screen.
-const EXIT_DISTANCE = 0.5; // m
-const DROP_HEIGHT = 0.45; // m
+// the new one is lowered in from above. Each goes just far enough to be out of
+// the picture, however much of the scene the screen takes in, so both are in
+// view for most of the swap (rather than one leaving an empty stage).
+const CLEAR_SIDE = 0.08; // m past the picture's right edge: more than half a bottle's width
+const CLEAR_TOP = 0.03; // m above its top edge, for the bottle's base
 const LINEUP_SPACING = 0.14; // m between bottles in the finale
 const FULL_FLOW = 0.6; // fill per second that counts as pouring flat out
 // The gin turns once through the botanicals interlude, following the scroll
@@ -24,6 +26,17 @@ const TURN_STIFFNESS = 30;
 const TURN_DAMPING = 11;
 const MAX_TURN_ACCELERATION = 8; // rad/s²
 const MAX_TURN_SPEED = 3; // rad/s
+
+const _edge = new THREE.Vector3();
+
+/**
+ * Where an edge of the picture meets the bottles' plane (z = 0). The edge is
+ * in screen terms: (1, 0) is the middle of the right edge, (0, 1) of the top.
+ */
+function edgeOnStage(camera: THREE.Camera, x: number, y: number) {
+  _edge.set(x, y, 0.5).unproject(camera).sub(camera.position);
+  return _edge.multiplyScalar(-camera.position.z / _edge.z).add(camera.position);
+}
 
 interface StageProps {
   sceneRef: RefObject<SceneState>;
@@ -48,22 +61,24 @@ function StagedBottle({ spirit, index, sceneRef, surgeRef }: StageProps & { spir
   const turnRef = useRef(0); // radians
   const turnSpeedRef = useRef(0); // rad/s
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     if (!groupRef.current) return;
     const s = sceneRef.current;
     const dt = Math.min(delta, 1 / 30);
+    const exitDistance = edgeOnStage(state.camera, 1, 0).x + CLEAR_SIDE;
+    const dropHeight = edgeOnStage(state.camera, 0, 1).y + CLEAR_TOP;
     // How many bottles away from centre stage this one is: above 0 it's still
     // waiting overhead, below 0 it's been and gone to the right.
     const away = index - s.bottle;
-    let x = away < 0 ? Math.min(-away, 1) * EXIT_DISTANCE : 0;
-    let y = away > 0 ? Math.min(away, 1) * DROP_HEIGHT : 0;
+    let x = away < 0 ? Math.min(-away, 1) * exitDistance : 0;
+    let y = away > 0 ? Math.min(away, 1) * dropHeight : 0;
     // The finale gathers all three, side by side. The one on stage steps
     // aside; the others are lowered into their places, so none of them
     // pass through each other on the way.
     const place = (index - 1) * LINEUP_SPACING;
     if (s.lineup > 0 && Math.abs(away) >= 0.5) {
       x = place;
-      y = DROP_HEIGHT;
+      y = dropHeight;
     }
     const { lerp } = THREE.MathUtils;
     groupRef.current.position.set(lerp(x, place, s.lineup), lerp(y, 0, s.lineup), 0);

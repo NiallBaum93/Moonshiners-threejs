@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, type RefObject } from 'react';
+import { useCallback, useMemo, useRef, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
@@ -15,6 +15,7 @@ export const FULL_LEVEL = 0.148;
 export const LIQUID_FLOOR = 0.006;
 /** Where the surface is when the bottle is this full (0 → 1), in metres above the table. */
 export const surfaceAt = (fill: number) => LIQUID_FLOOR + FULL_LEVEL * fill;
+const _base = new THREE.Vector3();
 // When it's out, the cork rises clear of the neck, then swings aside (out of
 // the way of the pour) and tips over.
 const CORK_LIFT_M = 0.03;
@@ -27,6 +28,37 @@ const POP_DAMPING = 7.5; // low, so it overshoots: a little hop on the way out
 // with a little speed, and stops dead against the neck. Corks don't bounce.
 const SEAT_DAMPING = 22;
 const SEAT_PUSH = 0.06; // how far past seated it aims
+// A bottle in the air (waiting to be lowered in) casts a fainter shadow the
+// higher it is, as it would under a big soft studio light, gone by this height.
+const SHADOW_FADE_HEIGHT = 0.1; // m
+
+/**
+ * The shadow map can't hold a half-strength shadow, but it can hold a
+ * shadow with holes in it. So a fading bottle leaves out a fine, even pattern
+ * of its shadow's pixels (more of them the fainter it is), and the light's
+ * soft-shadow blur smooths the pattern into an evenly lighter shadow.
+ */
+function fadingShadowShader(shader: THREE.WebGLProgramParametersWithUniforms, fade: { value: number }) {
+  shader.uniforms.uShadowFade = fade;
+  shader.fragmentShader = shader.fragmentShader
+    .replace(
+      'void main() {',
+      /* glsl */ `
+        uniform float uShadowFade;
+        // An ordered 4×4 pattern of thresholds, 0 → 1, spread as evenly as possible.
+        float bayer2(vec2 a) { a = floor(a); return fract(a.x / 2.0 + a.y * a.y * 0.75); }
+        float bayer4(vec2 a) { return bayer2(0.5 * a) * 0.25 + bayer2(a); }
+        void main() {
+      `,
+    )
+    .replace(
+      '#include <clipping_planes_fragment>',
+      /* glsl */ `
+        #include <clipping_planes_fragment>
+        if (bayer4(gl_FragCoord.xy) >= uShadowFade) discard;
+      `,
+    );
+}
 
 /**
  * Thin glass doesn't visibly bend light, so we don't use `transmission` here.
@@ -96,8 +128,14 @@ interface BottleProps {
 }
 
 export function Bottle({ labelUrl, liquid, level = FULL_LEVEL, fillRef, corkRef, pourRef, shoveRef, carrierRef }: BottleProps) {
+  const groupRef = useRef<THREE.Group>(null);
   const corkMeshRef = useRef<THREE.Mesh>(null);
   const popRef = useRef({ out: 0, speed: 0 });
+  // How much shadow it casts, 0 → 1, shared by every part's shadow material.
+  const shadowFadeRef = useRef({ value: 1 });
+  const shadowShader = useCallback((s: THREE.WebGLProgramParametersWithUniforms) => {
+    fadingShadowShader(s, shadowFadeRef.current);
+  }, []);
   const { nodes } = useGLTF(BOTTLE_URL);
   const glass = nodes.Bottle_Main as THREE.Mesh;
   const cork = nodes.cork as THREE.Mesh;
@@ -122,7 +160,11 @@ export function Bottle({ labelUrl, liquid, level = FULL_LEVEL, fillRef, corkRef,
   // The cork. Past halfway, the story wants it out; a spring gets it there.
   useFrame((_, delta) => {
     const mesh = corkMeshRef.current;
-    if (!mesh) return;
+    const group = groupRef.current;
+    if (!mesh || !group) return;
+    // The base's height above the floor.
+    const height = group.getWorldPosition(_base).y - fit.y;
+    shadowFadeRef.current.value = 1 - THREE.MathUtils.smoothstep(height, 0, SHADOW_FADE_HEIGHT);
     const dt = Math.min(delta, 1 / 30);
     const pop = popRef.current;
     const opening = (corkRef?.current ?? 0) > 0.5;
@@ -150,7 +192,7 @@ export function Bottle({ labelUrl, liquid, level = FULL_LEVEL, fillRef, corkRef,
   });
 
   return (
-    <group position-y={fit.y} scale={fit.scale} rotation-y={-Math.PI / 2 + 0.3}>
+    <group ref={groupRef} position-y={fit.y} scale={fit.scale} rotation-y={-Math.PI / 2 + 0.3}>
       {/* The label is printed paper on the outside of the glass. polygonOffset
           nudges it towards the camera so it doesn't flicker against the glass
           surface it sits exactly on.
@@ -169,6 +211,8 @@ export function Bottle({ labelUrl, liquid, level = FULL_LEVEL, fillRef, corkRef,
           polygonOffsetFactor={-1}
           polygonOffsetUnits={-4}
         />
+        {/* Its shadow keeps the die-cut shape too. */}
+        <meshDepthMaterial attach="customDepthMaterial" map={label} alphaTest={0.5} onBeforeCompile={shadowShader} />
       </mesh>
       {/* The paper's inside, facing into the bottle. Opaque, so the liquid
           refracts it, which is how you see the back label through the gin. */}
@@ -195,6 +239,7 @@ export function Bottle({ labelUrl, liquid, level = FULL_LEVEL, fillRef, corkRef,
 
       <mesh ref={corkMeshRef} geometry={cork.geometry} position={cork.position} scale={cork.scale} castShadow>
         <meshStandardMaterial color="#c49a6c" roughness={0.85} />
+        <meshDepthMaterial attach="customDepthMaterial" onBeforeCompile={shadowShader} />
       </mesh>
 
       {/* Drawn last (renderOrder) so the reflections sit on top of everything inside the bottle. */}
@@ -212,6 +257,7 @@ export function Bottle({ labelUrl, liquid, level = FULL_LEVEL, fillRef, corkRef,
           blendDst={THREE.OneMinusSrcAlphaFactor}
           onBeforeCompile={glassShader}
         />
+        <meshDepthMaterial attach="customDepthMaterial" onBeforeCompile={shadowShader} />
       </mesh>
     </group>
   );

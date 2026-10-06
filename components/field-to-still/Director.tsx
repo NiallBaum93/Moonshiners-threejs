@@ -89,6 +89,9 @@ export function Director({ sceneRef, surgeRef }: DirectorProps) {
     const right = wide ? 0.2 * (1 - s.lineup) * (1 - s.botanicals) : 0; // fraction of the screen's width
     const up = wide ? 0.12 * s.lineup : lerp(0.19, 0.07, s.botanicals); // fraction of its height
     camera.setViewOffset(size.width, size.height, -right * size.width, up * size.height, size.width, size.height);
+    // Now, rather than at render, so whatever works out where the picture's
+    // edges are this frame (the bottle swaps, the rain) sees this camera.
+    camera.updateMatrixWorld();
   }, -1);
 
   return null;

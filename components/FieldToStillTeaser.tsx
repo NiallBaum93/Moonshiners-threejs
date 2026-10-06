@@ -6,8 +6,9 @@
  * A window onto the Moonshiners × Brocksbushes collaboration: a still of the
  * three bottles from the /brocksbushes page, and a link through to it.
  *
- * It keeps that page's cream studio in both themes, so the still (rendered
- * against the cream backdrop) melts into it rather than sitting in a box.
+ * It keeps that page's finale studio, in its autumn orange, in both themes, so
+ * the still (rendered against that backdrop) melts into it rather than
+ * sitting in a box.
  * Copy and image rise into view via a GSAP ScrollTrigger.
  */
 
@@ -27,12 +28,12 @@ const display = Fraunces({ subsets: ['latin'], variable: '--font-display' });
 // rectangle (two fades, across and down, kept where they overlap).
 const FEATHER = {
   maskImage:
-    'linear-gradient(to right, transparent, black 5%, black 90%, transparent), ' +
-    'linear-gradient(to bottom, transparent, black 8%, black 88%, transparent)',
+    'linear-gradient(to right, transparent, black 16%, black 84%, transparent), ' +
+    'linear-gradient(to bottom, transparent, black 20%, black 80%, transparent)',
   maskComposite: 'intersect',
   WebkitMaskImage:
-    'linear-gradient(to right, transparent, black 5%, black 90%, transparent), ' +
-    'linear-gradient(to bottom, transparent, black 8%, black 88%, transparent)',
+    'linear-gradient(to right, transparent, black 16%, black 84%, transparent), ' +
+    'linear-gradient(to bottom, transparent, black 20%, black 80%, transparent)',
   WebkitMaskComposite: 'source-in',
 } as const;
 
@@ -63,7 +64,7 @@ export function FieldToStillTeaser() {
     <section
       ref={sectionRef}
       id="field-to-still"
-      className={`${display.variable} relative overflow-hidden bg-gradient-to-b from-[#efe3d1] to-[#e4d3bd] text-[#2b1d14]`}
+      className={`${display.variable} relative overflow-hidden bg-gradient-to-b from-[#f6dabd] to-[#ebc29c] text-[#2b1d14]`}
     >
       <div className="max-w-7xl mx-auto px-6 lg:px-12 py-20 lg:py-28 grid items-center gap-10 lg:grid-cols-[5fr_7fr]">
         <div>
