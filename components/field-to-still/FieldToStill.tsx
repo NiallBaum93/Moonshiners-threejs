@@ -6,6 +6,8 @@ import Image from 'next/image'
 import { DM_Serif_Display, Inter } from 'next/font/google'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import Lenis from 'lenis'
+import 'lenis/dist/lenis.css'
 import { COLLAB_SPIRITS, type CollabSpirit } from '@/lib/collabData'
 import { Logo } from '@/components/Logo'
 import { BEATS, TOTAL_SCREENS, story, type BeatId } from './story'
@@ -61,6 +63,18 @@ export function FieldToStill() {
   useEffect(() => {
     if (!ready) return
     const page = pageRef.current!
+
+    // Smooth wheel scrolling. A mouse with a notched wheel jumps ~100px a
+    // click, which makes the copy step rather than glide; Lenis eases each
+    // jump out over a few frames. It still moves the real page scroll, so
+    // ScrollTrigger works as before, and touch scrolling is left native.
+    // It runs on GSAP's clock, so both see the same position every frame.
+    const lenis = new Lenis({ lerp: 0.12, autoRaf: false })
+    lenis.on('scroll', ScrollTrigger.update)
+    const tick = (time: number) => lenis.raf(time * 1000)
+    gsap.ticker.add(tick)
+    gsap.ticker.lagSmoothing(0) // keep the clocks in step, even after a slow frame
+
     const phones = gsap.matchMedia() // animations only for small screens, undone if it grows
     const ctx = gsap.context(() => {
       // 1. Tell the scene how far down the page we are, in screens.
@@ -139,6 +153,9 @@ export function FieldToStill() {
     return () => {
       phones.revert()
       ctx.revert()
+      gsap.ticker.remove(tick)
+      gsap.ticker.lagSmoothing(500, 33) // GSAP's default
+      lenis.destroy()
     }
   }, [ready])
 
