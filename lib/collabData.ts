@@ -16,7 +16,11 @@ export type Season = 'summer' | 'autumn';
 export interface LiquidLook {
   /** The colour light becomes after travelling `depth` metres through the liquid */
   color: string;
-  /** Metres of liquid before light takes on `color`: big = pale/clear, small = dense */
+  /**
+   * Metres of liquid before light takes on `color`: big = pale/clear, small = dense.
+   * 0.065 is about the bottle's depth, so at that `color` is what you see looking
+   * straight through the bottle, which is what the reference photos show.
+   */
   depth: number;
   /** 0 = crystal clear, 1 = cloudy (fruit liqueurs scatter light) */
   haze: number;
@@ -52,7 +56,8 @@ export const COLLAB_SPIRITS: CollabSpirit[] = [
     notes: ['Fresh Strawberry', 'Juniper', 'Peppercorn', 'Citrus'],
     labelUrl: '/labels/brocksbushes-strawberry-gin.png',
     color: '#D7263D',
-    liquid: { color: '#e14659', depth: 0.3, haze: 0 }, // clear, with a strawberry tint
+    // Clear, deep crimson: from a photo backlit by a white screen, so it's the real tint
+    liquid: { color: '#ce1644', depth: 0.065, haze: 0 },
     season: 'summer',
   },
   {
@@ -64,7 +69,8 @@ export const COLLAB_SPIRITS: CollabSpirit[] = [
     notes: ['Pressed Strawberry', 'Strawberry Jam', 'Sweet Finish'],
     labelUrl: '/labels/brocksbushes-strawberry-liqueur.png',
     color: '#C2185B',
-    liquid: { color: '#b3142f', depth: 0.045, haze: 0.22 }, // deep ruby, a little cloudy from the juice
+    // Deep blood red, darker than the gin and a little cloudy from the juice
+    liquid: { color: '#790a24', depth: 0.065, haze: 0.14 },
     season: 'summer',
   },
   {
@@ -76,7 +82,8 @@ export const COLLAB_SPIRITS: CollabSpirit[] = [
     notes: ['Pumpkin', 'Cinnamon', 'Ginger', 'Clove', 'Vanilla'],
     labelUrl: '/labels/brocksbushes-pumpkin-spiced-rum.png',
     color: '#E8742A',
-    liquid: { color: '#c06a1e', depth: 0.08, haze: 0.05 }, // clear amber
+    // Clear honey gold, from the bottling-day photos
+    liquid: { color: '#d49535', depth: 0.065, haze: 0.05 },
     season: 'autumn',
   },
 ];
