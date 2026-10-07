@@ -224,7 +224,7 @@ function Loader({ progress, ready }: { progress: number; ready: boolean }) {
           <g className='transition-transform duration-700 ease-out' style={{ transform: `translateY(${level}px)` }}>
             <path
               d='M0 0Q25 -3.5 50 0T100 0T150 0T200 0T250 0T300 0V130H0Z'
-              fill='#d9536a'
+              fill='#ce1644'
               fillOpacity={0.85}
               className='motion-safe:animate-[loader-wave_2.4s_linear_infinite]'
             />
