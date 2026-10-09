@@ -29,7 +29,10 @@ const STYLE = { touchAction: 'pan-y' } as const;
 
 // NeutralToneMapping (Khronos PBR Neutral) keeps brand colours true;
 // R3F's default ACES shifts reds and oranges, which our labels are full of.
-const GL = { antialias: true, toneMapping: THREE.NeutralToneMapping };
+// The studio fills the whole frame, so the canvas is cleared opaque. (Three
+// still makes it see-through wherever something writes alpha under 1; the 3D
+// words don't: see keepOpaque.)
+const GL = { antialias: true, alpha: false, toneMapping: THREE.NeutralToneMapping };
 
 interface ExperienceProps {
   /** How much has loaded so far, 0 → 100 */

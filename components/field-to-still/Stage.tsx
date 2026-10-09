@@ -84,8 +84,11 @@ function StagedBottle({ spirit, index, sceneRef, surgeRef }: StageProps & { spir
     const { lerp } = THREE.MathUtils;
     groupRef.current.position.set(lerp(x, place, s.lineup), lerp(y, 0, s.lineup), 0);
     groupRef.current.visible = Math.abs(away) < 1 || s.lineup > 0.001;
-    // (The gin's word steps aside for the botanicals.)
-    presenceRef.current = Math.max(0, 1 - Math.abs(away) * 2) * (1 - s.lineup) * (1 - s.botanicals);
+    // (The gin's word steps aside for the botanicals, and doesn't come back
+    // once they've flown: the interlude ends just before the liqueur takes the
+    // gin's place, and the word would briefly reappear in between.)
+    const stepAside = index === 0 ? Math.max(s.botanicals, Math.min(s.flight * 20, 1)) : s.botanicals;
+    presenceRef.current = Math.max(0, 1 - Math.abs(away) * 2) * (1 - s.lineup) * (1 - stepAside);
     if (index === 0) {
       // The pour follows how fast it's filling: scroll through the fill and it
       // runs, stop and it stops, scroll back up and nothing pours.

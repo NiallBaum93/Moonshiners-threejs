@@ -272,7 +272,7 @@ function Intro() {
     <>
       <div className='sticky top-0'>
         <div data-intro-title className={`relative ${COLUMN}`}>
-          <p className='mb-4 text-xs font-medium tracking-[0.3em] uppercase'>Moonshiners × Brocksbushes</p>
+          <Partners className='mb-6' />
           <h1
             data-letters
             aria-label='Field to Still'
@@ -286,9 +286,9 @@ function Intro() {
             Three spirits from one Northumberland farm&apos;s year.
           </p>
           <Actions className='mt-8' />
-          <p className='mt-10 hidden text-xs tracking-[0.3em] text-[#2b1d14]/50 uppercase lg:block'>Scroll</p>
-          <Partners />
+          <MadeBy />
         </div>
+        <ScrollCue />
       </div>
 
       {/* Arrives as the gin pours in. */}
@@ -336,37 +336,58 @@ function Actions({ className = '' }: { className?: string }) {
   )
 }
 
-/**
- * Who made it: the two partners, side by side, then the studio. The page is a
- * standalone showpiece with no site nav, so these are also its way back to
- * each of them. At the foot of the opening screen on wide screens; under the
- * intro on phones.
- */
-function Partners() {
-  const link = 'pointer-events-auto transition-opacity hover:opacity-70'
+// The page is a standalone showpiece with no site nav, so the logos are also
+// its way back to each of the makers.
+const LOGO_LINK = 'pointer-events-auto transition-opacity hover:opacity-70'
+const LAYERS_URL = 'https://layers.studio'
+
+/** The collaboration, as the headline's kicker: the two partners' logos, side by side. */
+function Partners({ className = '' }: { className?: string }) {
   return (
-    <div className='mt-10 flex flex-wrap items-center gap-x-6 gap-y-4 lg:absolute lg:bottom-[6svh] lg:left-[7vw] lg:mt-0'>
-      <div className='flex items-center gap-4'>
-        <a href='https://moonshiners.co.uk' target='_blank' rel='noopener' className={link} data-cursor='hover'>
-          <Logo className='h-5 w-auto lg:h-6' width={undefined} height={undefined} />
-        </a>
-        <span aria-hidden className='text-sm text-[#2b1d14]/50'>
-          ×
-        </span>
-        <a href='https://www.brocksbushes.co.uk' target='_blank' rel='noopener' className={link} data-cursor='hover'>
-          <Image src='/logos/brocksbushes.svg' alt='Brocksbushes' width={82} height={40} unoptimized className='h-8 w-auto lg:h-10' />
-        </a>
-      </div>
-      <a
-        href='https://layers.studio'
-        target='_blank'
-        rel='noopener'
-        className={`flex items-center gap-2.5 lg:border-l lg:border-[#2b1d14]/20 lg:pl-6 ${link}`}
-        data-cursor='hover'
-      >
-        <span className='text-[10px] tracking-[0.25em] text-[#2b1d14]/55 uppercase'>Made by</span>
-        <Image src='/logos/layers-studio.svg' alt='Layers.Studio' width={82} height={36} unoptimized className='h-8 w-auto lg:h-9' />
+    <div className={`flex items-center gap-4 ${className}`}>
+      <a href='https://moonshiners.co.uk' target='_blank' rel='noopener' className={LOGO_LINK} data-cursor='hover'>
+        <Logo className='h-5 w-auto lg:h-6' width={undefined} height={undefined} />
       </a>
+      <span aria-hidden className='text-sm text-[#2b1d14]/50'>
+        ×
+      </span>
+      <a href='https://www.brocksbushes.co.uk' target='_blank' rel='noopener' className={LOGO_LINK} data-cursor='hover'>
+        <Image src='/logos/brocksbushes.svg' alt='Brocksbushes' width={82} height={40} unoptimized className='h-8 w-auto lg:h-10' />
+      </a>
+    </div>
+  )
+}
+
+/** Who built it. At the foot of the opening screen on wide screens; under the intro on phones. */
+function MadeBy() {
+  return (
+    <a
+      href={LAYERS_URL}
+      target='_blank'
+      rel='noopener'
+      className={`mt-10 flex items-center gap-3 self-start lg:absolute lg:bottom-[6svh] lg:left-[7vw] lg:mt-0 ${LOGO_LINK}`}
+      data-cursor='hover'
+    >
+      <span className='text-[11px] tracking-[0.25em] text-[#2b1d14]/55 uppercase'>Made by</span>
+      <Image src='/logos/layers-studio.svg' alt='Layers.Studio' width={110} height={48} unoptimized className='h-10 w-auto lg:h-12' />
+    </a>
+  )
+}
+
+/**
+ * "Scroll", centred at the foot of the opening screen, over a line that a
+ * short stroke keeps running down. Wide screens only: on phones the intro
+ * already fills the foot of the screen. It drifts away with the title.
+ */
+function ScrollCue() {
+  return (
+    <div className='absolute inset-x-0 bottom-[5svh] hidden justify-center lg:flex'>
+      <div data-intro-title className='flex flex-col items-center gap-3'>
+        <p className='text-[11px] tracking-[0.3em] text-[#2b1d14]/55 uppercase'>Scroll</p>
+        <span aria-hidden className='relative block h-12 w-px overflow-hidden bg-[#2b1d14]/15'>
+          <span className='absolute inset-x-0 top-0 h-1/2 bg-[#2b1d14]/70 motion-safe:animate-[scroll-cue_1.8s_cubic-bezier(0.65,0,0.35,1)_infinite]' />
+        </span>
+      </div>
     </div>
   )
 }
@@ -409,7 +430,8 @@ function SpiritCopy({ spirit }: { spirit: CollabSpirit }) {
           >
             <Letters text={spirit.name} />
           </h2>
-          <p data-reveal className='mt-3 text-sm tracking-wide text-[#2b1d14]/60'>
+          {/* Well clear of the name, for the q and p that hang below it. */}
+          <p data-reveal className='mt-5 text-sm tracking-wide text-[#2b1d14]/60 lg:mt-7'>
             {spirit.abv}% vol · 50cl
           </p>
           <p data-reveal className='mt-4 max-w-md text-sm leading-relaxed text-[#2b1d14]/80 lg:mt-6 lg:text-lg'>
@@ -435,7 +457,7 @@ function SpiritCopy({ spirit }: { spirit: CollabSpirit }) {
 function Finale() {
   return (
     <div className='sticky top-0'>
-      <div className='flex h-svh flex-col items-center justify-end px-6 pb-[6svh] text-center'>
+      <div className='relative flex h-svh flex-col items-center justify-end px-6 pb-[6svh] text-center'>
         <Frosted className='flex flex-col items-center'>
           <h2
             data-letters
@@ -459,8 +481,9 @@ function Finale() {
               target='_blank'
               rel='noopener'
               data-cursor='hover'
-              className='font-semibold text-[#2b1d14] underline decoration-[#2b1d14]/30 underline-offset-4 transition-colors hover:decoration-[#2b1d14]'
+              className='font-semibold text-[#2b1d14] decoration-[#2b1d14]/30 underline-offset-4 transition-colors hover:decoration-[#2b1d14]'
             >
+              <InstagramIcon className='mr-1.5 relative top-[1px] inline-block size-[1.05em] -translate-y-px align-middle' />
               @rachaelcutmoreart
             </a>
           </p>
@@ -473,8 +496,40 @@ function Finale() {
             and modified for web. Pumpkins from ShareTextures; ginger, lime and lemon from Poly Haven (CC0).
           </footer>
         </Frosted>
+        <CreatedBy />
       </div>
     </div>
+  )
+}
+
+/** The Instagram glyph, in the text's colour. */
+function InstagramIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth={2} aria-hidden className={className}>
+      <rect x={2.5} y={2.5} width={19} height={19} rx={5.5} />
+      <circle cx={12} cy={12} r={4.25} />
+      <circle cx={17.4} cy={6.6} r={1.25} fill='currentColor' stroke='none' />
+    </svg>
+  )
+}
+
+/**
+ * The studio's credit, on a pill: in the bottom right corner on wide screens,
+ * clear of the centred copy; under it, centred, on narrower ones.
+ */
+function CreatedBy() {
+  return (
+    <a
+      href={LAYERS_URL}
+      target='_blank'
+      rel='noopener'
+      data-reveal
+      data-cursor='hover'
+      className='pointer-events-auto mt-6 flex items-center gap-2.5 rounded-full border border-[#2b1d14]/15 bg-[#fbf3ee]/60 py-1.5 pr-4 pl-3.5 backdrop-blur-sm transition-colors hover:border-[#2b1d14]/40 xl:absolute xl:right-[3vw] xl:bottom-[4svh] xl:mt-0'
+    >
+      <span className='text-[10px] tracking-[0.25em] text-[#2b1d14]/60 uppercase'>Created by</span>
+      <Image src='/logos/layers-studio.svg' alt='Layers.Studio' width={64} height={28} unoptimized className='h-6 w-auto' />
+    </a>
   )
 }
 

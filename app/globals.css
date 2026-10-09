@@ -38,3 +38,9 @@ body {
   from { transform: translateX(0); }
   to { transform: translateX(-100px); }
 }
+
+/* The hero's scroll cue: a short stroke runs down its line, over and over. */
+@keyframes scroll-cue {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(200%); }
+}
