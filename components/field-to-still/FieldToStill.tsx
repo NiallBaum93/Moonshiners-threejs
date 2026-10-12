@@ -285,7 +285,9 @@ function Intro() {
           <p className='mt-6 max-w-sm text-lg leading-relaxed text-[#2b1d14]/75'>
             Three spirits from one Northumberland farm&apos;s year.
           </p>
-          <Actions className='mt-8' />
+          {/* On wide screens the block sits a little above centre: with the
+              studio credit and scroll cue below it, centred reads as low. */}
+          <Actions className='mt-8 lg:mb-[18svh]' />
           <MadeBy />
         </div>
         <ScrollCue />
