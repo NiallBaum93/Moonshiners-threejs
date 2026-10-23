@@ -43,6 +43,8 @@ export interface CollabSpirit {
   liquid: LiquidLook;
   /** Which Brocksbushes harvest the fruit comes from */
   season: Season;
+  /** On sale in the farm shop now. If not, it's coming this Christmas */
+  availableNow: boolean;
 }
 
 // Ordered summer → autumn, so the page can scroll through the farm's year.
@@ -59,6 +61,7 @@ export const COLLAB_SPIRITS: CollabSpirit[] = [
     // Clear, deep crimson: from a photo backlit by a white screen, so it's the real tint
     liquid: { color: '#ce1644', depth: 0.065, haze: 0 },
     season: 'summer',
+    availableNow: false,
   },
   {
     name: 'Strawberry Liqueur',
@@ -72,6 +75,7 @@ export const COLLAB_SPIRITS: CollabSpirit[] = [
     // Deep blood red, darker than the gin and a little cloudy from the juice
     liquid: { color: '#790a24', depth: 0.065, haze: 0.14 },
     season: 'summer',
+    availableNow: false,
   },
   {
     name: 'Pumpkin Spiced Rum',
@@ -85,5 +89,6 @@ export const COLLAB_SPIRITS: CollabSpirit[] = [
     // Clear honey gold, from the bottling-day photos
     liquid: { color: '#d49535', depth: 0.065, haze: 0.05 },
     season: 'autumn',
+    availableNow: true,
   },
 ];

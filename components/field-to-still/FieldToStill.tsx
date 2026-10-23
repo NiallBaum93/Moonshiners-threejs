@@ -310,19 +310,23 @@ function Intro() {
   )
 }
 
-const SHOP_URL = 'https://moonshiners.co.uk/shop/'
+// The range is sold at the Brocksbushes farm shop, not online.
+const SHOP_URL =
+  'https://www.google.com/maps/place/Brocksbushes+Farm+Shop/@54.9689557,-1.9661129,736m/data=!3m2!1e3!4b1!4m6!3m5!1s0x487dc5392c4caacd:0xfc153e5cb4cfbf67!8m2!3d54.9689557!4d-1.9661129!16s%2Fg%2F1hc1f7jb3?entry=ttu&g_ep=EgoyMDI2MTAxOS4wIKXMDSoASAFQAw%3D%3D'
 const CONTACT_URL = 'https://moonshiners.co.uk/contact/'
 
-/** Where to go next: buy a bottle, or get in touch. */
+/** Where to go next: find a bottle at the farm shop, or get in touch. */
 function Actions({ className = '' }: { className?: string }) {
   return (
     <div className={`pointer-events-auto flex flex-wrap items-center gap-x-6 gap-y-3 ${className}`}>
       <a
         href={SHOP_URL}
+        target='_blank'
+        rel='noopener'
         data-cursor='hover'
         className='group inline-flex items-center gap-2 rounded-full bg-[#2b1d14] px-6 py-3 text-sm font-semibold tracking-wide text-[#fbf3ee] transition-opacity hover:opacity-85'
       >
-        Shop the collection
+        Available in store
         <span aria-hidden className='transition-transform group-hover:translate-x-1'>
           →
         </span>
@@ -422,8 +426,20 @@ function SpiritCopy({ spirit }: { spirit: CollabSpirit }) {
     <div data-exit className='sticky top-0'>
       <div className={COLUMN}>
         <Frosted>
+          {spirit.availableNow && (
+            <p data-reveal className='mb-3'>
+              <span
+                className='inline-block rounded-full px-3 py-1 text-[11px] font-semibold tracking-[0.2em] text-[#fbf3ee] uppercase'
+                style={{ backgroundColor: spirit.color }}
+              >
+                Available now
+              </span>
+            </p>
+          )}
           <p data-reveal className='mb-4 text-xs font-medium tracking-[0.3em] uppercase' style={{ color: spirit.color }}>
-            {spirit.season === 'summer' ? 'Summer' : 'Autumn'} at Brocksbushes
+            {spirit.availableNow
+              ? `${spirit.season === 'summer' ? 'Summer' : 'Autumn'} at Brocksbushes`
+              : 'Coming this Christmas'}
           </p>
           <h2
             data-letters
@@ -469,8 +485,8 @@ function Finale() {
             <Letters text='One farm. Three bottles.' />
           </h2>
           <p data-reveal className='mt-5 max-w-xl text-base leading-relaxed text-[#2b1d14]/75 lg:text-lg'>
-            Find them at the Moonshiners Institute on Blandford Street, Newcastle, and at Brocksbushes Farm Shop, near
-            Corbridge.
+            The Pumpkin Spiced Rum is available at Brocksbushes Farm Shop, near Corbridge, now. The strawberries follow
+            this Christmas.
           </p>
           <div data-reveal>
             <Actions className='mt-7 justify-center' />
