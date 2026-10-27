@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Cursor } from "@/components/Cursor";
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   title: "Field to Still · Moonshiners × Brocksbushes",
@@ -18,6 +19,7 @@ export default function RootLayout({
       <body className="min-h-full">
         <Cursor />
         {children}
+        <Analytics />
       </body>
     </html>
   );
