@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Cursor } from "@/components/Cursor";
+import { AwwwardsBadge } from "@/components/AwwwardsBadge";
 import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
@@ -19,6 +20,7 @@ export default function RootLayout({
       <body className="min-h-full">
         <Cursor />
         {children}
+        <AwwwardsBadge />
         <Analytics />
       </body>
     </html>
